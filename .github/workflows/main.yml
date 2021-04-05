@@ -1,0 +1,37 @@
+# To debug a workflow see: https://docs.github.com/en/actions/configuring-and-managing-workflows/managing-a-workflow-run#enabling-debug-logging
+
+name: Rust CI
+
+on: [ push ]
+
+jobs:
+  build-rs:
+
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Ubuntu GCC 10
+            os: ubuntu-20.04
+          - name: macOS 10.15
+            os: macOS-10.15
+          - name: Windows
+            os: windows-latest
+
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: pre-install-linux
+        shell: bash
+        run: |
+          sudo apt update
+          sudo apt install -qy libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
+        if: runner.os == 'Linux' # or use $RUNNER_OS
+
+      - name: build
+        run: cargo build
+      - name: test
+        run: cargo test
