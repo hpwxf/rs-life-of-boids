@@ -1,4 +1,4 @@
-use glutin::event::{Event, WindowEvent, VirtualKeyCode, ElementState, KeyboardInput};
+use glutin::event::{Event, WindowEvent, VirtualKeyCode, ElementState, KeyboardInput, StartCause};
 use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::{WindowBuilder, Fullscreen};
 use glutin::ContextBuilder;
@@ -7,26 +7,35 @@ use glutin::monitor::{MonitorHandle};
 mod support;
 
 fn main() {
-    let el = EventLoop::new();
+    let events_loop = EventLoop::new();
 
-    let fullscreen = Some(Fullscreen::Borderless(Some(prompt_for_monitor(&el))));
+    let fullscreen = Some(Fullscreen::Borderless(Some(prompt_for_monitor(&events_loop))));
     let mut is_maximized = false;
     let mut decorations = true;
 
     let wb = WindowBuilder::new()
-        .with_title("A fantastic window!");
+        .with_title("A fantastic window!")
+        // .with_transparent(true)
+        // .with_decorations(true)
+        ;
 
-    let windowed_context = ContextBuilder::new().build_windowed(wb, &el).unwrap();
-
+    let windowed_context = ContextBuilder::new().build_windowed(wb, &events_loop).unwrap();
     let windowed_context = unsafe { windowed_context.make_current().unwrap() };
-
-    println!("Pixel format of the window's GL context: {:?}", windowed_context.get_pixel_format());
+    
+    
+    println!("Info:");
+    println!("\tAPI: {:?}", windowed_context.get_api());
+    println!("\tPixel format of the window's GL context: {:?}", windowed_context.get_pixel_format());
+    println!("\twindow size: {:?}",windowed_context.window().outer_size());
 
     let gl = support::load(&windowed_context.context());
 
-    el.run(move |event, _, control_flow| {
+    let start_time = std::time::SystemTime::now();
+
+    events_loop.run(move |event, _, control_flow| {
         // println!("{:?}", event);
-        *control_flow = ControlFlow::Wait;
+        // *control_flow = ControlFlow::Wait; // no auto refresh
+        *control_flow = ControlFlow::Poll;
 
         match event {
             Event::LoopDestroyed => return,
@@ -60,9 +69,13 @@ fn main() {
                 }
                 _ => (),
             },
-            Event::RedrawRequested(_) => {
-                gl.draw_frame([0.0, 0.0, 0.0, 1.0]);
-                windowed_context.swap_buffers().unwrap();
+            Event::RedrawRequested(_) | Event::NewEvents(StartCause::Poll) => {
+                if let Ok(elapsed) = start_time.elapsed() {
+                    let physical_size = windowed_context.window().inner_size();
+                    let ratio = physical_size.width as f32 / physical_size.height as f32;
+                    gl.draw_frame(elapsed.as_secs_f32(), ratio, [0.0, 0.0, 0.0, 0.0]);
+                    windowed_context.swap_buffers().unwrap();
+                }
             }
             _ => (),
         }
@@ -72,9 +85,9 @@ fn main() {
 
 // Enumerate monitors and prompt user to choose one
 fn prompt_for_monitor(el: &EventLoop<()>) -> MonitorHandle {
-    for (num, monitor) in el.available_monitors().enumerate() {
-        println!("Monitor #{}: {:?}", num, monitor.name());
-    }
+    // for (num, monitor) in el.available_monitors().enumerate() {
+    //     println!("Monitor #{}: {:?}", num, monitor.name());
+    // }
 
     // print!("Please write the number of the monitor to use: ");
     // use std::io::Write;

@@ -9,8 +9,7 @@ build = "build.rs"
 
 [dependencies]
 glutin = "0.26"
-#gl = "*"
-takeable-option = "0.4"
+cgmath = "0.18"
 
 [build-dependencies]
 gl_generator = "0.14"
