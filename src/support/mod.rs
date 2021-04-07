@@ -12,7 +12,7 @@ pub mod gl {
 }
 
 pub struct Gl {
-    gl: gl::Gl,
+    pub(crate) gl: gl::Gl,
     _program: gl::types::GLuint,
     mvp_attrib: gl::types::GLint,
     _vertex_array: gl::types::GLuint,
@@ -50,9 +50,11 @@ pub fn load(gl_context: &glutin::Context<glutin::PossiblyCurrent>) -> Gl {
             gl.DeleteShader(fs);
             gl.UseProgram(program);
 
-            let mut vb = std::mem::zeroed();
-            gl.GenBuffers(1, &mut vb);
-            gl.BindBuffer(gl::ARRAY_BUFFER, vb);
+            // https://learnopengl.com/Getting-started/Hello-Triangle
+            // https://github.com/bwasty/learn-opengl-rs/tree/master/src/_1_getting_started (warning out-of-date)
+            let mut vbo = std::mem::zeroed();
+            gl.GenBuffers(1, &mut vbo);
+            gl.BindBuffer(gl::ARRAY_BUFFER, vbo);
             gl.BufferData(
                 gl::ARRAY_BUFFER,
                 (VERTEX_DATA.len() * std::mem::size_of::<f32>()) as gl::types::GLsizeiptr,
@@ -100,10 +102,14 @@ impl Gl {
             let m = Matrix4::from_angle_z(cgmath::Rad(t));
             let p = cgmath::ortho(-ratio, ratio, -1., 1., 1., -1.);
             let mvp = p * m;
-            
+
             self.gl.ClearColor(color[0], color[1], color[2], color[3]);
             self.gl.UniformMatrix4fv(self.mvp_attrib, 1, gl::FALSE, mvp.as_ptr() as *const f32);
             self.gl.Clear(gl::COLOR_BUFFER_BIT);
+
+            // self.gl.UseProgram(self._program);
+            // self.gl.BindVertexArray(self._vertex_array);
+
             self.gl.DrawArrays(gl::TRIANGLES, 0, 3);
         }
     }
@@ -128,6 +134,7 @@ void main()
 {
     // gl_Position = vec4(vPos.x, vPos.y, 0.0, 1.0);
     gl_Position = MVP * vec4(vPos, /* z */ 0.0, /* scale ? */ 1.0);
+    // gl_PointSize = 100.0;
 	color = vCol; // pass the color along to the fragment shader
 }
 \0";

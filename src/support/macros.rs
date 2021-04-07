@@ -1,3 +1,5 @@
+#[macro_use]
+
 macro_rules! check_compile {
     ($gl:ident, $vs:ident, $loc:literal) => {{
         // Setup shader compilation checks

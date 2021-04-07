@@ -5,6 +5,7 @@ use glutin::ContextBuilder;
 use glutin::monitor::{MonitorHandle};
 
 mod support;
+mod glx;
 
 fn main() {
     let events_loop = EventLoop::new();
