@@ -57,6 +57,7 @@ pub enum ShaderError {
     Lookup(String),
     Undef,
 }
+
 // 
 // impl fmt::Display for ShaderError {
 //     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -82,79 +83,82 @@ pub enum ShaderError {
 //     }
 // }
 // 
-// pub struct VertexArray {
-//     vertex_array_id: GLuint,
-// }
-// 
-// impl VertexArray {
-//     pub fn new() -> VertexArray {
-//         let mut vertex_array_id = 0;
-//         unsafe {
-//             gl::GenVertexArrays(1, &mut vertex_array_id);
-//         }
-//         VertexArray { vertex_array_id }
-//     }
-// 
-//     pub fn bind(&self) {
-//         unsafe {
-//             gl::BindVertexArray(self.vertex_array_id);
-//         }
-//     }
-// }
-// 
-// impl Drop for VertexArray {
-//     fn drop(&mut self) {
-//         unsafe {
-//             gl::DeleteVertexArrays(1, &self.vertex_array_id);
-//         }
-//     }
-// }
-// 
-// pub struct Buffer {
-//     buffer_id: GLuint,
-// }
-// 
-// impl Buffer {
-//     pub fn new() -> Buffer {
-//         let mut buffer_id = 0;
-//         unsafe {
-//             gl::GenBuffers(1, &mut buffer_id);
-//         }
-//         Buffer { buffer_id }
-//     }
-// 
-//     pub fn bind(&self, target: GLenum) {
-//         unsafe {
-//             gl::BindBuffer(target, self.buffer_id);
-//         }
-//     }
-// }
-// 
-// impl Drop for Buffer {
-//     fn drop(&mut self) {
-//         unsafe {
-//             gl::DeleteBuffers(1, &self.buffer_id);
-//         }
-//     }
-// }
+pub struct VertexArray<'a> {
+    vertex_array_id: gl::types::GLuint,
+    gl: &'a gl::Gl,
+}
+
+impl<'a> VertexArray<'a> {
+    pub fn new(gl: &'a gl::Gl) -> VertexArray {
+        let mut vertex_array_id = 0;
+        unsafe {
+            gl.GenVertexArrays(1, &mut vertex_array_id);
+        }
+        VertexArray { vertex_array_id, gl }
+    }
+
+    pub fn bind(&self) {
+        unsafe {
+            self.gl.BindVertexArray(self.vertex_array_id);
+        }
+    }
+}
+
+impl<'a> Drop for VertexArray<'a> {
+    fn drop(&mut self) {
+        unsafe {
+            self.gl.DeleteVertexArrays(1, &self.vertex_array_id);
+        }
+    }
+}
+
+pub struct Buffer<'a> {
+    buffer_id: gl::types::GLuint,
+    gl: &'a gl::Gl,
+}
+
+impl<'a> Buffer<'a> {
+    pub fn new(gl: &gl::Gl) -> Buffer {
+        let mut buffer_id = 0;
+        unsafe {
+            gl.GenBuffers(1, &mut buffer_id);
+        }
+        Buffer { buffer_id, gl }
+    }
+
+    pub fn bind(&self, target: gl::types::GLenum) {
+        unsafe {
+            self.gl.BindBuffer(target, self.buffer_id);
+        }
+    }
+}
+
+impl<'a> Drop for Buffer<'a> {
+    fn drop(&mut self) {
+        unsafe {
+            self.gl.DeleteBuffers(1, &self.buffer_id);
+        }
+    }
+}
 
 use crate::support::gl;
 use crate::support::Gl;
 use std::ffi::{CString, CStr};
 
-pub struct ShaderProgram {
+pub struct ShaderProgram<'a> {
     pub(crate) program: gl::types::GLuint,
+    gl: &'a gl::Gl,
 }
 
-impl ShaderProgram {
-    pub fn new(gl: &gl::Gl, vertex_shader_src: &'static [u8], fragment_shader_src: &'static [u8]) -> Result<ShaderProgram, ShaderError> {
+impl<'a> ShaderProgram<'a> {
+    pub fn new(gl: &'a gl::Gl, vertex_shader_src: &'static [u8], fragment_shader_src: &'static [u8]) -> Result<ShaderProgram<'a>, ShaderError> {
         unsafe {
             let vertex_shader = compile_shader(&gl, vertex_shader_src, gl::VERTEX_SHADER)?;
             let fragment_shader = compile_shader(&gl, fragment_shader_src, gl::FRAGMENT_SHADER)?;
             let program = link_program(&gl, vertex_shader, fragment_shader)?;
             gl.DeleteShader(vertex_shader);
             gl.DeleteShader(fragment_shader);
-            Ok(ShaderProgram { program })
+            Ok(ShaderProgram { program, gl })
         }
     }
     // 
@@ -257,4 +261,32 @@ unsafe fn link_program(gl: &gl::Gl, vertex_shader: gl::types::GLuint, fragment_s
     } else {
         Ok(program)
     }
+}
+
+pub struct WindowSizeInfo {
+    pub width: f32,
+    pub height: f32,
+    // hidpi_factor: f64,
+}
+
+pub enum CustomError {
+    WindowInfo(String)
+}
+
+use glutin::window::{WindowBuilder, Fullscreen, Window};
+
+pub fn get_window_size_info(window: &Window) -> Result<WindowSizeInfo, CustomError> {
+    // let hidpi_factor = window.get_hidpi_factor();
+    // let logical_size = window
+    //     .get_inner_size()
+    //     .ok_or_else(|| CustomError::WindowIngo("Tried to get size of closed window".to_string()))?;
+    // let physical_size = logical_size.to_physical(hidpi_factor);
+
+    let physical_size = window.inner_size();
+
+    Ok(WindowSizeInfo {
+        width: physical_size.width as f32,
+        height: physical_size.height as f32,
+        // hidpi_factor,
+    })
 }
