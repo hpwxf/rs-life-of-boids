@@ -5,7 +5,6 @@ use glutin::ContextBuilder;
 use glutin::monitor::{MonitorHandle};
 
 #[macro_use]
-mod macros;
 mod support;
 mod glx;
 

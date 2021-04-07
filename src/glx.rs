@@ -143,21 +143,20 @@ use crate::support::Gl;
 use std::ffi::{CString, CStr};
 
 pub struct ShaderProgram {
-    program_id: gl::types::GLuint,
+    pub(crate) program: gl::types::GLuint,
 }
 
 impl ShaderProgram {
-    // pub fn new(vrtx_src: &str, frag_src: &str) -> Result<ShaderProgram, ShaderError> {
-    //     unsafe {
-    //         let vrtx_shader = compile_shader(vrtx_src, gl::VERTEX_SHADER)?;
-    //         let frag_shader = compile_shader(frag_src, gl::FRAGMENT_SHADER)?;
-    //         let program_id = link_program(vrtx_shader, frag_shader)?;
-    //         gl::DeleteShader(vrtx_shader);
-    //         gl::DeleteShader(frag_shader);
-    //         let program = ShaderProgram { program_id };
-    //         Ok(program)
-    //     }
-    // }
+    pub fn new(gl: &gl::Gl, vertex_shader_src: &'static [u8], fragment_shader_src: &'static [u8]) -> Result<ShaderProgram, ShaderError> {
+        unsafe {
+            let vertex_shader = compile_shader(&gl, vertex_shader_src, gl::VERTEX_SHADER)?;
+            let fragment_shader = compile_shader(&gl, fragment_shader_src, gl::FRAGMENT_SHADER)?;
+            let program = link_program(&gl, vertex_shader, fragment_shader)?;
+            gl.DeleteShader(vertex_shader);
+            gl.DeleteShader(fragment_shader);
+            Ok(ShaderProgram { program })
+        }
+    }
     // 
     // pub fn activate(&self) {
     //     unsafe {
@@ -203,16 +202,16 @@ impl ShaderProgram {
 //         }
 //     }
 // }
-// 
-unsafe fn compile_shader(src: &str, gl: &gl::Gl, shader_type: gl::types::GLenum) -> Result<gl::types::GLuint, ShaderError> {
+
+unsafe fn compile_shader(gl: &gl::Gl, src: &'static [u8], shader_type: gl::types::GLenum) -> Result<gl::types::GLuint, ShaderError> {
     let shader = gl.CreateShader(shader_type);
 
     // Attempt to compile shader
-    let c_str = CString::new(src.as_bytes()).unwrap();
-    gl.ShaderSource(shader, 1, &c_str.as_ptr(), std::ptr::null());
+    let c_str = [src.as_ptr() as *const _];
+    gl.ShaderSource(shader, 1, c_str.as_ptr(), std::ptr::null());
     gl.CompileShader(shader);
 
-    // Ckeck compilation errors
+    // Check compilation errors
     let mut success = i32::from(gl::FALSE);
     gl.GetShaderiv(shader, gl::COMPILE_STATUS, &mut success);
     if success != i32::from(gl::TRUE) {
@@ -248,14 +247,14 @@ unsafe fn link_program(gl: &gl::Gl, vertex_shader: gl::types::GLuint, fragment_s
         let mut info_log = Vec::with_capacity(len as usize);
         info_log.set_len(len as usize - 1); // -1 to skip trialing null character
         gl.GetProgramInfoLog(
-        program,
-        len,
-        std::ptr::null_mut(),
-        info_log.as_mut_ptr() // as *mut gl::types::GLchar : FIXME useless ?
+            program,
+            len,
+            std::ptr::null_mut(),
+            info_log.as_mut_ptr(), // as *mut gl::types::GLchar : FIXME useless ?
         );
         let message = CStr::from_ptr(info_log.as_ptr()).to_str().unwrap();
         Err(ShaderError::Linking(message.into()))
     } else {
         Ok(program)
-    } 
+    }
 }

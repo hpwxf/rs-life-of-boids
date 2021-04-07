@@ -2,6 +2,7 @@ use cgmath::prelude::*;
 
 use std::ffi::CStr;
 use cgmath::Matrix4;
+use crate::glx::ShaderProgram;
 
 pub mod gl {
     pub use self::Gles2 as Gl;
@@ -27,24 +28,7 @@ pub fn load(gl_context: &glutin::Context<glutin::PossiblyCurrent>) -> Gl {
 
     let (program, mvp_attrib, vertex_array) =
         unsafe {
-            let vs = gl.CreateShader(gl::VERTEX_SHADER);
-            gl.ShaderSource(vs, 1, [VS_SRC.as_ptr() as *const _].as_ptr(), std::ptr::null());
-            gl.CompileShader(vs);
-            check_compile!(gl, vs, "Vertex Shader");
-
-            let fs = gl.CreateShader(gl::FRAGMENT_SHADER);
-            gl.ShaderSource(fs, 1, [FS_SRC.as_ptr() as *const _].as_ptr(), std::ptr::null());
-            gl.CompileShader(fs);
-            check_compile!(gl, fs, "Fragment Shader");
-
-            let program = gl.CreateProgram();
-            gl.AttachShader(program, vs);
-            gl.AttachShader(program, fs);
-            gl.LinkProgram(program);
-            check_link!(gl, program, "Program");
-
-            gl.DeleteShader(vs);
-            gl.DeleteShader(fs);
+            let program = ShaderProgram::new(&gl,&VS_SRC, &FS_SRC).unwrap().program;
             gl.UseProgram(program);
 
             // https://learnopengl.com/Getting-started/Hello-Triangle
