@@ -83,18 +83,18 @@ pub enum ShaderError {
 //     }
 // }
 // 
-pub struct VertexArray<'a> {
-    vertex_array_id: gl::types::GLuint,
-    gl: &'a gl::Gl,
+pub struct VertexArray {
+    pub vertex_array_id: gl::types::GLuint,
+    gl: Rc<gl::Gl>,
 }
 
-impl<'a> VertexArray<'a> {
-    pub fn new(gl: &'a gl::Gl) -> VertexArray {
+impl VertexArray {
+    pub fn new(gl: Rc<gl::Gl>) -> VertexArray {
         let mut vertex_array_id = 0;
         unsafe {
             gl.GenVertexArrays(1, &mut vertex_array_id);
         }
-        VertexArray { vertex_array_id, gl }
+        VertexArray { vertex_array_id, gl: gl.clone() }
     }
 
     pub fn bind(&self) {
@@ -104,7 +104,7 @@ impl<'a> VertexArray<'a> {
     }
 }
 
-impl<'a> Drop for VertexArray<'a> {
+impl Drop for VertexArray {
     fn drop(&mut self) {
         unsafe {
             self.gl.DeleteVertexArrays(1, &self.vertex_array_id);
@@ -112,18 +112,20 @@ impl<'a> Drop for VertexArray<'a> {
     }
 }
 
-pub struct Buffer<'a> {
+// https://learnopengl.com/Getting-started/Hello-Triangle
+// https://github.com/bwasty/learn-opengl-rs/tree/master/src/_1_getting_started (warning out-of-date)
+pub struct Buffer {
     buffer_id: gl::types::GLuint,
-    gl: &'a gl::Gl,
+    gl: Rc<gl::Gl>,
 }
 
-impl<'a> Buffer<'a> {
-    pub fn new(gl: &gl::Gl) -> Buffer {
+impl Buffer {
+    pub fn new(gl: Rc<gl::Gl>) -> Buffer {
         let mut buffer_id = 0;
         unsafe {
             gl.GenBuffers(1, &mut buffer_id);
         }
-        Buffer { buffer_id, gl }
+        Buffer { buffer_id, gl: gl.clone() }
     }
 
     pub fn bind(&self, target: gl::types::GLenum) {
@@ -133,7 +135,7 @@ impl<'a> Buffer<'a> {
     }
 }
 
-impl<'a> Drop for Buffer<'a> {
+impl Drop for Buffer {
     fn drop(&mut self) {
         unsafe {
             self.gl.DeleteBuffers(1, &self.buffer_id);
@@ -142,32 +144,31 @@ impl<'a> Drop for Buffer<'a> {
 }
 
 use crate::support::gl;
-use crate::support::Gl;
-use std::ffi::{CString, CStr};
+use std::ffi::CStr;
 
-pub struct ShaderProgram<'a> {
-    pub(crate) program: gl::types::GLuint,
-    gl: &'a gl::Gl,
+pub struct ShaderProgram {
+    pub(crate) program_id: gl::types::GLuint,
+    pub(crate) gl: Rc<gl::Gl>,
 }
 
-impl<'a> ShaderProgram<'a> {
-    pub fn new(gl: &'a gl::Gl, vertex_shader_src: &'static [u8], fragment_shader_src: &'static [u8]) -> Result<ShaderProgram<'a>, ShaderError> {
+impl ShaderProgram {
+    pub fn new(gl: &Rc<gl::Gl>, vertex_shader_src: &'static [u8], fragment_shader_src: &'static [u8]) -> Result<ShaderProgram, ShaderError> {
         unsafe {
             let vertex_shader = compile_shader(&gl, vertex_shader_src, gl::VERTEX_SHADER)?;
             let fragment_shader = compile_shader(&gl, fragment_shader_src, gl::FRAGMENT_SHADER)?;
             let program = link_program(&gl, vertex_shader, fragment_shader)?;
             gl.DeleteShader(vertex_shader);
             gl.DeleteShader(fragment_shader);
-            Ok(ShaderProgram { program, gl })
+            Ok(ShaderProgram { program_id: program, gl: gl.clone() })
         }
     }
-    // 
-    // pub fn activate(&self) {
-    //     unsafe {
-    //         gl::UseProgram(self.program_id);
-    //     }
-    // }
-    // 
+    
+    pub fn activate(&self) {
+        unsafe {
+            self.gl.UseProgram(self.program_id);
+        }
+    }
+    
     // pub fn get_atrib_location(&self, name: &str) -> Result<GLuint, ShaderError> {
     //     let c_name = CString::new(name).unwrap();
     //     unsafe {
@@ -273,7 +274,8 @@ pub enum CustomError {
     WindowInfo(String)
 }
 
-use glutin::window::{WindowBuilder, Fullscreen, Window};
+use glutin::window::{Window};
+use std::rc::Rc;
 
 pub fn get_window_size_info(window: &Window) -> Result<WindowSizeInfo, CustomError> {
     // let hidpi_factor = window.get_hidpi_factor();

@@ -28,18 +28,18 @@ fn main() {
     let mut is_maximized = false;
     let mut decorations = true;
 
-    let gl = gl_init(&windowed_context);
-    let gl = support::load(gl);
-
     let start_time = std::time::SystemTime::now();
 
     let mut fps_counter = FpsCounter::new();
     let mut fps_cacher = FpsCache::new(CACHE_FPS_MS);
-    
+
     let window_info = glx::get_window_size_info(windowed_context.window()).unwrap_or_else(|_| panic!(""));
     let renderer_config = RendererConfig { width: window_info.width, height: window_info.height, boid_size: 1.0 };
-    // let renderer = Renderer::new(&gl.gl, renderer_config);
-    
+
+    let gl = gl_init(&windowed_context);
+    let mut renderer = Renderer::new(gl, renderer_config);
+    renderer.initialize();
+
     events_loop.run(move |event, _, control_flow| {
         // println!("{:?}", event);
         // *control_flow = ControlFlow::Wait; // no auto refresh
@@ -81,21 +81,20 @@ fn main() {
                 if let Ok(elapsed) = start_time.elapsed() {
                     let physical_size = windowed_context.window().inner_size();
                     let ratio = physical_size.width as f32 / physical_size.height as f32;
-                    gl.draw_frame(elapsed.as_secs_f32(), ratio, [0.0, 0.0, 0.0, 0.0]);
-                    
-                    
+                    renderer.draw_frame(elapsed.as_secs_f32(), ratio, [0.0, 0.0, 0.0, 0.0]);
+
+
                     windowed_context.swap_buffers().unwrap();
                 }
             }
             _ => (),
         }
-        
+
         fps_counter.tick();
         fps_cacher.poll(&fps_counter, |new_fps| {
             let title = format!("{} - {:02} fps", TITLE, new_fps);
             windowed_context.window().set_title(&title);
         });
-        
     });
 }
 
