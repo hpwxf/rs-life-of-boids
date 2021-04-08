@@ -100,6 +100,7 @@ fn main() {
                     (VirtualKeyCode::S, ElementState::Pressed) => {
                         println!("Fullscreen info: {:?}", windowed_context.window().fullscreen());
                         println!("FPS info: {:?}", fps_counter.average_fps());
+                        println!("ScaleFactor info: {:?}", windowed_context.window().scale_factor());
                     }
                     (VirtualKeyCode::M, ElementState::Pressed) => {
                         is_maximized = !is_maximized;
@@ -127,7 +128,7 @@ fn main() {
                         p.position += p.velocity / 5.0;
                     }
                     ///////////////////
-                    renderer.render(elapsed.as_secs_f32(), ratio, [0.0, 0.0, 0.0, 0.0], &window_info, &points);
+                    renderer.render(elapsed.as_secs_f32(), ratio, [0.0, 0.0, 0.0, 0.0], &points);
                     windowed_context.swap_buffers().unwrap();
                 }
             }

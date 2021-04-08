@@ -271,7 +271,7 @@ pub struct WindowSizeInfo {
 
 #[derive(Debug)]
 pub enum CustomError {
-    WindowInfo(String)
+    // WindowInfo(String)
 }
 
 pub fn get_window_size_info(window: &Window) -> Result<WindowSizeInfo, CustomError> {
