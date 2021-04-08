@@ -3,8 +3,6 @@ use std::rc::Rc;
 use cgmath::{Matrix, Matrix4, Matrix3, SquareMatrix, Point2, Vector2};
 
 use crate::glx::{Buffer, ShaderProgram, VertexArray, WindowSizeInfo};
-use crate::shaders::points::{FS_SRC, VS_SRC};
-// use crate::shaders::triangle::{FS_SRC, VS_SRC};
 use crate::support::gl;
 use crate::WindowConfig;
 use crate::shaders::points::{vertex_transform_2d, Point, Velocity};
@@ -16,6 +14,7 @@ enum Mode {
     Points,
 }
 
+// const MODE: Mode = Mode::Triangle;
 const MODE: Mode = Mode::Points;
 
 
@@ -26,9 +25,12 @@ pub struct RendererConfig {
 
 pub struct Renderer {
     pub gl: Rc<gl::Gl>,
-    program: ShaderProgram,
-    vbo: Buffer,
-    vao: VertexArray,
+    program1: ShaderProgram,
+    vbo1: Buffer,
+    vao1: VertexArray,
+    program2: ShaderProgram,
+    vbo2: Buffer,
+    vao2: VertexArray,
     mvp_attrib: gl::types::GLint,
     //
     transform: Matrix3<f32>,
@@ -40,17 +42,22 @@ impl Renderer {
     pub fn new(gl: gl::Gl, config: RendererConfig) -> Renderer {
         let gl = Rc::new(gl);
 
-        let program = ShaderProgram::new(&gl, &VS_SRC, &FS_SRC)
+        let program1 = ShaderProgram::new(&gl, &crate::shaders::triangle::VS_SRC, &crate::shaders::triangle::FS_SRC)
+            .expect("Error while build shader program");
+        let program2 = ShaderProgram::new(&gl, &crate::shaders::points::VS_SRC, &crate::shaders::points::FS_SRC)
             .expect("Error while build shader program");
 
         Renderer {
             gl: gl.clone(),
-            program,
-            vbo: Buffer::new(gl.clone()),
-            vao: VertexArray::new(gl.clone()),
             // for triangle
+            program1,
+            vbo1: Buffer::new(gl.clone()),
+            vao1: VertexArray::new(gl.clone()),
             mvp_attrib: 0,
             // for points
+            program2,
+            vbo2: Buffer::new(gl.clone()),
+            vao2: VertexArray::new(gl.clone()),
             transform: vertex_transform_2d(config.width, config.height),
             point_size: 3.0,
             max_speed: 10.0,
@@ -60,11 +67,11 @@ impl Renderer {
     pub fn initialize(&mut self) {
         let gl = self.gl.clone();
 
-        self.vao.bind();
-        self.vbo.bind(gl::ARRAY_BUFFER);
-        self.program.activate();
-        self.vbo.bind(gl::ARRAY_BUFFER);
-        if MODE == Mode::Triangle {
+        self.vao1.bind();
+        self.vbo1.bind(gl::ARRAY_BUFFER);
+        self.program1.activate();
+        self.vbo1.bind(gl::ARRAY_BUFFER);
+        // if MODE == Mode::Triangle {
             unsafe {
                 gl.BufferData(
                     gl::ARRAY_BUFFER,
@@ -73,20 +80,21 @@ impl Renderer {
                     gl::STATIC_DRAW,
                 );
             }
-        }
-        self.vao.bind();
+        // }
+        self.vao1.bind();
 
-        if MODE == Mode::Triangle {
+        // if MODE == Mode::Triangle {
+            self.program1.activate();
             let mvp_attrib = self
-                .program
+                .program1
                 .get_uniform_location("MVP")
                 .expect("Could not find uniform");
             let pos_attrib = self
-                .program
+                .program1
                 .get_attrib_location("vPos")
                 .expect("Could not find vPos attribute");
             let color_attrib = self
-                .program
+                .program1
                 .get_attrib_location("vCol")
                 .expect("Could not find vCol attribute");
 
@@ -114,34 +122,35 @@ impl Renderer {
                 gl.EnableVertexAttribArray(color_attrib as gl::types::GLuint);
             };
             self.mvp_attrib = mvp_attrib;
-        }
+        // }
 
-        if MODE == Mode::Points {
+        // if MODE == Mode::Points {
+            self.program2.activate();
             unsafe {
                 // Set the transform uniform
                 let trans_loc = self
-                    .program
+                    .program2
                     .get_uniform_location("transform")
                     .expect("Could not find uniform");
                 gl.UniformMatrix3fv(trans_loc, 1, gl::FALSE, self.transform.as_ptr());
 
                 // Set the point size
                 let size_loc = self
-                    .program
+                    .program2
                     .get_uniform_location("pointSize")
                     .expect("Could not find uniform");
                 gl.Uniform1f(size_loc, self.point_size as gl::types::GLfloat);
 
                 // Set max speed
                 let max_speed_loc = self
-                    .program
+                    .program2
                     .get_uniform_location("maxSpeedSquared")
                     .expect("Could not find uniform");
                 gl.Uniform1f(max_speed_loc, self.max_speed.powi(2) as gl::types::GLfloat);
 
                 // Specify the layout of the vertex data
                 let pos_loc = self
-                    .program
+                    .program2
                     .get_attrib_location("position")
                     .expect("could not find position");
                 gl.EnableVertexAttribArray(pos_loc as gl::types::GLuint);
@@ -155,7 +164,7 @@ impl Renderer {
                 );
 
                 let vel_loc = self
-                    .program
+                    .program2
                     .get_attrib_location("velocity")
                     .expect("could not find velocity");
                 gl.EnableVertexAttribArray(vel_loc as gl::types::GLuint);
@@ -171,7 +180,7 @@ impl Renderer {
                 // Allow shader to specify point size
                 gl.Enable(gl::PROGRAM_POINT_SIZE);
             }
-        }
+        // }
     }
 
     pub fn render(&self, t: f32, ratio: f32, color: [f32; 4], window_info: &WindowSizeInfo, points: &[Point]) {
@@ -185,17 +194,17 @@ impl Renderer {
             let p = cgmath::ortho(-ratio, ratio, -1., 1., 1., -1.);
             let mvp = p * m;
 
+            self.program1.activate();
             unsafe {
-                self.program.activate();
                 self.gl.UniformMatrix4fv(self.mvp_attrib, 1, gl::FALSE, mvp.as_ptr() as *const f32);
-                self.gl.BindVertexArray(self.vao.vertex_array_id);
+                self.gl.BindVertexArray(self.vao1.vertex_array_id);
                 self.gl.DrawArrays(gl::TRIANGLES, 0, 3);
             }
         }
 
         if MODE == Mode::Points {
+            self.program2.activate();
             unsafe {
-                self.program.activate();
                 // This _should_ implement buffer orphaning
                 self.gl.BufferData(gl::ARRAY_BUFFER, 0, std::ptr::null(), gl::STREAM_DRAW);
                 self.gl.BufferData(
