@@ -8,6 +8,7 @@ use crate::render::{Renderer, RendererConfig};
 use crate::shaders::points::Point;
 use cgmath::{Vector2, Point2, Rad, Basis2, Rotation2, Rotation, Zero};
 use rand::distributions::{Range, IndependentSample};
+use glutin::dpi::PhysicalSize;
 
 #[macro_use]
 mod support;
@@ -116,8 +117,8 @@ fn main() {
             },
             Event::RedrawRequested(_) | Event::NewEvents(StartCause::Poll) => {
                 if let Ok(elapsed) = start_time.elapsed() {
-                    let physical_size = windowed_context.window().inner_size();
-                    let ratio = physical_size.width as f32 / physical_size.height as f32;
+                    let PhysicalSize { width, height } = windowed_context.window().inner_size();
+                    let ratio = width as f32 / height as f32;
                     ///////////////////
                     let vel_space = Range::new(0., 10.0);
                     let ang_space = Range::new(0., 6.28);
@@ -128,7 +129,7 @@ fn main() {
                         p.position += p.velocity / 5.0;
                     }
                     ///////////////////
-                    renderer.render(elapsed.as_secs_f32(), ratio, [0.0, 0.0, 0.0, 0.0], &points);
+                    renderer.render(elapsed.as_secs_f32(), ratio, [0.0, 0.0, 0.0, 0.0], &points, (width, height));
                     windowed_context.swap_buffers().unwrap();
                 }
             }
