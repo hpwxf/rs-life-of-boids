@@ -10,6 +10,7 @@ build = "build.rs"
 [dependencies]
 glutin = "0.26"
 cgmath = "0.18"
+rand = "0.3.16"
 
 [build-dependencies]
 gl_generator = "0.14"

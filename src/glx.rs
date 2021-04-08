@@ -50,39 +50,47 @@
 //     }
 // }
 // 
+
+use std::ffi::{CStr, CString};
+use std::rc::Rc;
+
+use glutin::{ContextWrapper, PossiblyCurrent};
+use glutin::window::Window;
+
+use crate::support::gl;
+
 #[derive(Debug)]
 pub enum ShaderError {
     Compilation(String),
     Linking(String),
-    Lookup(String),
-    Undef,
+    Lookup(String)
 }
 
-// 
-// impl fmt::Display for ShaderError {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         match *self {
-//             ShaderError::Compilation(ref err) => write!(f, "Shader compilation error, {}", err),
-//             ShaderError::Linking(ref err) => write!(f, "Shader linking error, {}", err),
-//             ShaderError::Lookup(ref err) => write!(f, "Shader lookup error, {}", err),
-//         }
-//     }
-// }
-// 
-// impl error::Error for ShaderError {
-//     fn description(&self) -> &str {
-//         match *self {
-//             ShaderError::Compilation(ref err) => err,
-//             ShaderError::Linking(ref err) => err,
-//             ShaderError::Lookup(ref err) => err,
-//         }
-//     }
-// 
-//     fn cause(&self) -> Option<&dyn error::Error> {
-//         None
-//     }
-// }
-// 
+
+impl std::fmt::Display for ShaderError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            ShaderError::Compilation(ref err) => write!(f, "Shader compilation error, {}", err),
+            ShaderError::Linking(ref err) => write!(f, "Shader linking error, {}", err),
+            ShaderError::Lookup(ref err) => write!(f, "Shader lookup error, {}", err),
+        }
+    }
+}
+
+impl std::error::Error for ShaderError {
+    fn description(&self) -> &str {
+        match *self {
+            ShaderError::Compilation(ref err) => err,
+            ShaderError::Linking(ref err) => err,
+            ShaderError::Lookup(ref err) => err,
+        }
+    }
+
+    fn cause(&self) -> Option<&dyn std::error::Error> {
+        None
+    }
+}
+
 pub struct VertexArray {
     pub vertex_array_id: gl::types::GLuint,
     gl: Rc<gl::Gl>,
@@ -143,9 +151,6 @@ impl Drop for Buffer {
     }
 }
 
-use crate::support::gl;
-use std::ffi::CStr;
-
 pub struct ShaderProgram {
     pub(crate) program_id: gl::types::GLuint,
     pub(crate) gl: Rc<gl::Gl>,
@@ -169,44 +174,38 @@ impl ShaderProgram {
         }
     }
     
-    // pub fn get_atrib_location(&self, name: &str) -> Result<GLuint, ShaderError> {
-    //     let c_name = CString::new(name).unwrap();
-    //     unsafe {
-    //         let location = gl::GetAttribLocation(self.program_id, c_name.as_ptr());
-    //         if location == -1 {
-    //             Err(ShaderError::Lookup(format!(
-    //                 "'couldn't find attribute named '{}'",
-    //                 name
-    //             )))
-    //         } else {
-    //             Ok(location as GLuint)
-    //         }
-    //     }
-    // }
-    // 
-    // pub fn get_uniform_location(&self, name: &str) -> Result<GLint, ShaderError> {
-    //     let c_name = CString::new(name).unwrap();
-    //     unsafe {
-    //         let location = gl::GetUniformLocation(self.program_id, c_name.as_ptr());
-    //         if location == -1 {
-    //             Err(ShaderError::Lookup(format!(
-    //                 "'couldn't find uniform named '{}'",
-    //                 name
-    //             )))
-    //         } else {
-    //             Ok(location)
-    //         }
-    //     }
-    // }
+    pub fn get_attrib_location(&self, name: &str) -> Result<gl::types::GLint, ShaderError> {
+        let c_name = CString::new(name).unwrap();
+        unsafe {
+            let location = self.gl.GetAttribLocation(self.program_id, c_name.as_ptr());
+            if location == -1 {
+                Err(ShaderError::Lookup(format!("'couldn't find attribute named '{}'", name)))
+            } else {
+                Ok(location)
+            }
+        }
+    }
+    
+    pub fn get_uniform_location(&self, name: &str) -> Result<gl::types::GLint, ShaderError> {
+        let c_name = CString::new(name).unwrap();
+        unsafe {
+            let location = self.gl.GetUniformLocation(self.program_id, c_name.as_ptr());
+            if location == -1 {
+                Err(ShaderError::Lookup(format!("'couldn't find uniform named '{}'", name)))
+            } else {
+                Ok(location)
+            }
+        }
+    }
 }
 
-// impl Drop for ShaderProgram {
-//     fn drop(&mut self) {
-//         unsafe {
-//             gl::DeleteShader(self.program_id);
-//         }
-//     }
-// }
+impl Drop for ShaderProgram {
+    fn drop(&mut self) {
+        unsafe {
+            self.gl.DeleteShader(self.program_id);
+        }
+    }
+}
 
 unsafe fn compile_shader(gl: &gl::Gl, src: &'static [u8], shader_type: gl::types::GLenum) -> Result<gl::types::GLuint, ShaderError> {
     let shader = gl.CreateShader(shader_type);
@@ -270,12 +269,10 @@ pub struct WindowSizeInfo {
     // hidpi_factor: f64,
 }
 
+#[derive(Debug)]
 pub enum CustomError {
     WindowInfo(String)
 }
-
-use glutin::window::{Window};
-use std::rc::Rc;
 
 pub fn get_window_size_info(window: &Window) -> Result<WindowSizeInfo, CustomError> {
     // let hidpi_factor = window.get_hidpi_factor();
@@ -291,4 +288,17 @@ pub fn get_window_size_info(window: &Window) -> Result<WindowSizeInfo, CustomErr
         height: physical_size.height as f32,
         // hidpi_factor,
     })
+}
+
+pub fn gl_init(windowed_context: &ContextWrapper<PossiblyCurrent, Window>) -> gl::Gl {
+    let gl_context = windowed_context.context();
+    let gl = gl::Gl::load_with(|ptr| gl_context.get_proc_address(ptr) as *const _);
+
+    let version = unsafe {
+        let data = CStr::from_ptr(gl.GetString(gl::VERSION) as *const _).to_bytes().to_vec();
+        String::from_utf8(data).unwrap()
+    };
+
+    println!("OpenGL version {}", version);
+    gl
 }
