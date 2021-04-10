@@ -28,7 +28,7 @@ pub struct Renderer {
     trans_loc: gl::types::GLint,
     size_loc: gl::types::GLint,
     max_speed_loc: gl::types::GLint,
-    // for quads
+    // for lines
     program3: ShaderProgram,
     vbo3: Buffer,
     vao3: VertexArray,
@@ -43,7 +43,7 @@ impl Renderer {
             .expect("Error while build shader program");
         let program2 = ShaderProgram::new(&gl, &crate::shaders::points::VS_SRC, &crate::shaders::points::FS_SRC)
             .expect("Error while build shader program");
-        let program3 = ShaderProgram::new(&gl, &crate::shaders::quads::VS_SRC, &crate::shaders::quads::FS_SRC)
+        let program3 = ShaderProgram::new(&gl, &crate::shaders::lines::VS_SRC, &crate::shaders::lines::FS_SRC)
             .expect("Error while build shader program");
 
         Renderer {
@@ -63,7 +63,7 @@ impl Renderer {
             trans_loc: 0,
             size_loc: 0,
             max_speed_loc: 0,
-            // for quads
+            // for lines
             program3,
             vbo3: Buffer::new(gl.clone()),
             vao3: VertexArray::new(gl.clone()),
@@ -74,7 +74,7 @@ impl Renderer {
     pub fn initialize(&mut self) {
         self.initialize_points();
         self.initialize_triangle();
-        self.initialize_quads();
+        self.initialize_lines();
     }
 
     fn initialize_triangle(&mut self) {
@@ -184,7 +184,7 @@ impl Renderer {
         }
     }
 
-    fn initialize_quads(&mut self) {
+    fn initialize_lines(&mut self) {
         let gl = self.gl.clone();
 
         self.vao3.bind();
@@ -233,7 +233,7 @@ impl Renderer {
             self.gl.Clear(gl::COLOR_BUFFER_BIT);
         }
 
-        self.render_quads(t, ratio, size);
+        self.render_lines(t, size);
         unsafe { self.gl.UseProgram(0); };
         self.render_triangle(t, ratio);
         unsafe { self.gl.UseProgram(0); };
@@ -278,7 +278,7 @@ impl Renderer {
         }
     }
 
-    fn render_quads(&self, t: f32, ratio: f32, size: (u32, u32)) {
+    fn render_lines(&self, t: f32, size: (u32, u32)) {
         self.vao3.bind(); // not sure about these bind before activate (empirical)
         self.vbo3.bind(gl::ARRAY_BUFFER);
         self.program3.activate();
@@ -291,8 +291,6 @@ impl Renderer {
             vertex_data.extend_from_slice(&[(size.0 as f32), (size.1 as f32) / 2.0, 1.0, 1.0, 1.0]);
             vertex_data.extend_from_slice(&[(size.0 as f32) / 2.0, (0 as f32) / 2.0, 1.0, 1.0, 1.0]);
             vertex_data.extend_from_slice(&[(size.0 as f32) / 2.0, (size.1 as f32) / 2.0, 1.0, 1.0, 1.0]);
-
-            
             
             self.gl.BufferData(
                 gl::ARRAY_BUFFER,
@@ -300,9 +298,9 @@ impl Renderer {
                 vertex_data.as_ptr() as *const _,
                 gl::STREAM_DRAW,
             );
+
             // https://docs.gl/gl3/glDrawArrays
-            // https://www.khronos.org/opengl/wiki/Primitive
-            self.gl.LineWidth(100.0);
+            // https://www.khronos.org/opengl/wiki/Primitive (use gl::LINE_LOOP to make lines)
             self.gl.DrawArrays(gl::LINES, 0, (vertex_data.len() / 5) as i32);
         }
     }

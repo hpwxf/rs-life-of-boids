@@ -9,6 +9,7 @@ use crate::shaders::points::Point;
 use cgmath::{Vector2, Point2, Rad, Basis2, Rotation2, Rotation, Zero};
 use rand::distributions::{Range, IndependentSample};
 use glutin::dpi::PhysicalSize;
+use std::path::PathBuf;
 
 #[macro_use]
 mod support;
@@ -47,8 +48,13 @@ fn main() {
 
     let start_time = std::time::SystemTime::now();
 
-    let mut fps_counter = FpsCounter::new();
-    let mut fps_cacher = FpsCache::new(CACHE_FPS_MS);
+    // let mut fps_counter = FpsCounter::new();
+    // let mut fps_cacher = FpsCache::new(CACHE_FPS_MS);
+
+    let mut last_time = std::time::Instant::now();
+    let mut count = 0;
+    let mut accumulated_time = 0.0;
+
 
     let window_info = glx::get_window_size_info(windowed_context.window()).expect("Cannot get window size info");
     let renderer_config = RendererConfig { width: window_info.width, height: window_info.height };
@@ -58,7 +64,7 @@ fn main() {
     let mut renderer = Renderer::new(gl, renderer_config);
     renderer.initialize();
 
-    let mut points = Vec::<Point>::with_capacity(10000);
+    let mut points = Vec::<Point>::with_capacity(10_000);
     let get_pos = |t: f32| {
         Point2 {
             x: window_info.width * (0.5 + 0.4 * f32::cos(t)),
@@ -100,8 +106,9 @@ fn main() {
                     }
                     (VirtualKeyCode::S, ElementState::Pressed) => {
                         println!("Fullscreen info: {:?}", windowed_context.window().fullscreen());
-                        println!("FPS info: {:?}", fps_counter.average_fps());
+                        // println!("FPS info: {:?}", fps_counter.average_fps());
                         println!("ScaleFactor info: {:?}", windowed_context.window().scale_factor());
+                        glx::save_image(renderer.gl.clone(), &PathBuf::from("export.png"), &windowed_context.window());
                     }
                     (VirtualKeyCode::M, ElementState::Pressed) => {
                         is_maximized = !is_maximized;
@@ -136,11 +143,24 @@ fn main() {
             _ => (),
         }
 
-        fps_counter.tick();
-        fps_cacher.poll(&fps_counter, |new_fps| {
-            let title = format!("{} - {:02} fps", TITLE, new_fps);
-            windowed_context.window().set_title(&title);
-        });
+        let now = std::time::Instant::now();
+        let duration = now.duration_since(last_time);
+        last_time = now;
+        let elapsed_time = duration.as_secs() as f64 * 1000.0 + duration.subsec_nanos() as f64 * 1e-6;
+        accumulated_time += elapsed_time;
+        count += 1;
+        if accumulated_time > 1000.0 {
+            let title = format!("FPS: {:.2}", count as f64 / (accumulated_time * 0.001)); 
+            windowed_context.window().set_title(title.as_str());
+            count = 0;
+            accumulated_time = 0.0;
+        }
+
+        // fps_counter.tick();
+        // fps_cacher.poll(&fps_counter, |new_fps| {
+        //     let title = format!("{} - {:02} fps", TITLE, new_fps);
+        //     windowed_context.window().set_title(&title);
+        // });
     });
 }
 

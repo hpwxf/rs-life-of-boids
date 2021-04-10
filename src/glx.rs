@@ -58,12 +58,14 @@ use glutin::{ContextWrapper, PossiblyCurrent};
 use glutin::window::Window;
 
 use crate::support::gl;
+use std::path::{Path, PathBuf};
+use glutin::dpi::PhysicalSize;
 
 #[derive(Debug)]
 pub enum ShaderError {
     Compilation(String),
     Linking(String),
-    Lookup(String)
+    Lookup(String),
 }
 
 
@@ -167,13 +169,13 @@ impl ShaderProgram {
             Ok(ShaderProgram { program_id: program, gl: gl.clone() })
         }
     }
-    
+
     pub fn activate(&self) {
         unsafe {
             self.gl.UseProgram(self.program_id);
         }
     }
-    
+
     pub fn get_attrib_location(&self, name: &str) -> Result<gl::types::GLint, ShaderError> {
         let c_name = CString::new(name).unwrap();
         unsafe {
@@ -185,7 +187,7 @@ impl ShaderProgram {
             }
         }
     }
-    
+
     pub fn get_uniform_location(&self, name: &str) -> Result<gl::types::GLint, ShaderError> {
         let c_name = CString::new(name).unwrap();
         unsafe {
@@ -301,4 +303,36 @@ pub fn gl_init(windowed_context: &ContextWrapper<PossiblyCurrent, Window>) -> gl
 
     println!("OpenGL version {}", version);
     gl
+}
+
+pub fn save_image(gl: Rc<gl::Gl>, filepath: &PathBuf, window: &Window) {
+    let PhysicalSize { width, height } = window.inner_size();
+    let nr_channels = 3;
+    let mut stride = nr_channels * width;
+    stride += if stride % 4 != 0 { 4 - stride % 4 } else { 0 };
+    let buffer_size = stride * height;
+    let mut data = Vec::<u8>::with_capacity(buffer_size as usize);
+    data.resize(data.capacity(), 0);
+
+    unsafe {
+        gl.PixelStorei(gl::PACK_ALIGNMENT, 4);
+        gl.ReadBuffer(gl::FRONT);
+        gl.ReadPixels(0, 0, width as i32, height as i32, gl::RGB, gl::UNSIGNED_BYTE, data.as_ptr() as *mut _);
+    }
+
+    let mut img = image::RgbImage::new(width, height);
+    for y in 0..height {
+        let mut pos = (y * stride) as usize;
+        for x in 0..width {
+            let red = data[pos];
+            pos += 1;
+            let green = data[pos];
+            pos += 1;
+            let blue = data[pos];
+            pos += 1;
+            *img.get_pixel_mut(x, height-1-y) = image::Rgb([red, green, blue]);
+        }
+    }
+
+    img.save(filepath).unwrap();
 }
