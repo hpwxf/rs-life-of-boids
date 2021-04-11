@@ -89,7 +89,7 @@ impl LinesRenderProgram {
 }
 
 // Target Vertex Shader
-const VS_SRC: &'static [u8] = b"
+const VS_SRC: &[u8] = b"
 #version 330 core
 uniform mat3 transform;
 in vec2 vPos;
@@ -102,7 +102,7 @@ void main()
 }
 \0";
 
-const FS_SRC: &'static [u8] = b"
+const FS_SRC: &[u8] = b"
 #version 330 core
 
 in vec3 color;

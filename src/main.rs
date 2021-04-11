@@ -4,6 +4,7 @@ use glutin::window::{Fullscreen, Window, WindowBuilder};
 use glutin::{ContextBuilder, ContextWrapper, PossiblyCurrent};
 
 use crate::aux::calculate_relative_brightness;
+#[allow(unused_imports)]
 use crate::fps::{FpsCache, FpsCounter};
 use crate::render::{Renderer, RendererConfig};
 use crate::shaders::points::Point;
@@ -21,7 +22,7 @@ mod render;
 mod shaders;
 
 const TITLE: &str = "new rusty boids";
-const CACHE_FPS_MS: u64 = 500;
+// const CACHE_FPS_MS: u64 = 500;
 
 pub enum WindowConfig {
     Fullscreen,

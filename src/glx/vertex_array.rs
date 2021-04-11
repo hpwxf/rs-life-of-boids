@@ -14,7 +14,7 @@ impl VertexArray {
         }
         VertexArray {
             vertex_array_id,
-            gl: gl.clone(),
+            gl,
         }
     }
 

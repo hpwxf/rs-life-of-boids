@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use std::time::{Duration, Instant};
 
 const NUM_SAMPLES: usize = 20;

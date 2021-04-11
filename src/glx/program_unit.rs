@@ -33,13 +33,13 @@ impl ProgramUnit {
         self.program.gl.clone()
     }
 
-    pub fn prepare(self: &Self) {
+    pub fn prepare(&self) {
         self.vao.bind(); // not sure about these bind before activate (empirical)
         self.vbo.bind(gl::ARRAY_BUFFER);
         self.program.activate();
     }
 
-    pub fn activate(self: &Self) {
+    pub fn activate(&self) {
         // self.vao.bind();
         self.vbo.bind(gl::ARRAY_BUFFER); // not sure about these bind before activate (empirical)
         self.program.activate();
@@ -72,6 +72,7 @@ impl ProgramUnit {
         }
     }
 
+    #[allow(dead_code)]
     pub fn get_attribute(&self, name: &'static str) -> Result<gl::types::GLint> {
         match self.attributes.get(name) {
             Some(id) => Ok(*id),

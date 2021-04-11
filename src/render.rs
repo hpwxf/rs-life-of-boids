@@ -21,10 +21,10 @@ impl Renderer {
     pub fn new(gl: gl::Gl, config: RendererConfig) -> Result<Renderer> {
         let gl = Rc::new(gl);
         Ok(Renderer {
-            gl: gl.clone(),
             triangle_program: TriangleRenderProgram::new(gl.clone())?,
             points_program: PointsRenderProgram::new(gl.clone(), config.size)?,
             lines_program: LinesRenderProgram::new(gl.clone())?,
+            gl,
         })
     }
 

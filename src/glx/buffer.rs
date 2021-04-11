@@ -16,7 +16,7 @@ impl Buffer {
         }
         Buffer {
             buffer_id,
-            gl: gl.clone(),
+            gl,
         }
     }
 

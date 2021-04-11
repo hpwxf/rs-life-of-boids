@@ -82,7 +82,7 @@ pub static VERTEX_DATA: [f32; 15] = [
 ];
 
 // Target Vertex Shader
-pub const VS_SRC: &'static [u8] = b"
+pub const VS_SRC: &[u8] = b"
 #version 330 core
 uniform mat4 MVP;
 in vec2 vPos;
@@ -97,7 +97,7 @@ void main()
 }
 \0";
 
-pub const FS_SRC: &'static [u8] = b"
+pub const FS_SRC: &[u8] = b"
 #version 330 core
 
 in vec3 color;
