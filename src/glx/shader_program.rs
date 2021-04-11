@@ -15,7 +15,7 @@ pub enum ShaderError {
 }
 
 pub struct ShaderProgram {
-    pub(super) program_id: gl::types::GLuint,
+    program_id: gl::types::GLuint,
     pub(super) gl: Rc<gl::Gl>,
 }
 

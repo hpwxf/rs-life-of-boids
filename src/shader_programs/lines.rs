@@ -13,8 +13,8 @@ impl LinesRenderProgram {
         Ok(LinesRenderProgram {
             program: ProgramUnit::new(
                 &gl,
-                &crate::shaders::lines::VS_SRC,
-                &crate::shaders::lines::FS_SRC,
+                &crate::shader_programs::lines::VS_SRC,
+                &crate::shader_programs::lines::FS_SRC,
             )?,
         })
     }

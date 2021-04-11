@@ -62,9 +62,9 @@ impl TriangleRenderProgram {
             );
             gl.BufferData(
                 gl::ARRAY_BUFFER,
-                (crate::shaders::triangle::VERTEX_DATA.len() * std::mem::size_of::<f32>())
+                (crate::shader_programs::triangle::VERTEX_DATA.len() * std::mem::size_of::<f32>())
                     as gl::types::GLsizeiptr,
-                crate::shaders::triangle::VERTEX_DATA.as_ptr() as *const _,
+                crate::shader_programs::triangle::VERTEX_DATA.as_ptr() as *const _,
                 gl::STATIC_DRAW,
             );
             gl.DrawArrays(gl::TRIANGLES, 0, 3);
@@ -82,7 +82,7 @@ pub static VERTEX_DATA: [f32; 15] = [
 ];
 
 // Target Vertex Shader
-pub const VS_SRC: &[u8] = b"
+const VS_SRC: &[u8] = b"
 #version 330 core
 uniform mat4 MVP;
 in vec2 vPos;
@@ -97,7 +97,7 @@ void main()
 }
 \0";
 
-pub const FS_SRC: &[u8] = b"
+const FS_SRC: &[u8] = b"
 #version 330 core
 
 in vec3 color;

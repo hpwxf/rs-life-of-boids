@@ -9,7 +9,7 @@ use std::rc::Rc;
 pub struct ProgramUnit {
     program: ShaderProgram,
     vbo: Buffer,
-    pub vao: VertexArray,
+    vao: VertexArray,
     uniforms: HashMap<&'static str, gl::types::GLint>,
     attributes: HashMap<&'static str, gl::types::GLint>,
 }

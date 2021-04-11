@@ -3,11 +3,11 @@ use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::{Fullscreen, Window, WindowBuilder};
 use glutin::{ContextBuilder, ContextWrapper, PossiblyCurrent};
 
-use crate::aux::calculate_relative_brightness;
+use crate::utils::calculate_relative_brightness;
 #[allow(unused_imports)]
 use crate::fps::{FpsCache, FpsCounter};
 use crate::render::{Renderer, RendererConfig};
-use crate::shaders::points::Point;
+use crate::shader_programs::points::Point;
 use cgmath::{Basis2, Point2, Rad, Rotation, Rotation2, Vector2, Zero};
 use glutin::dpi::PhysicalSize;
 use image::io::Reader as ImageReader;
@@ -16,10 +16,10 @@ use std::path::PathBuf;
 
 #[macro_use]
 mod glx;
-mod aux;
+mod utils;
 mod fps;
 mod render;
-mod shaders;
+mod shader_programs;
 
 const TITLE: &str = "new rusty boids";
 // const CACHE_FPS_MS: u64 = 500;

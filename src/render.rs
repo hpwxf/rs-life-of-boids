@@ -1,7 +1,7 @@
 use crate::glx::{self, gl, WindowSizeInfo};
-use crate::shaders::lines::LinesRenderProgram;
-use crate::shaders::points::{Point, PointsRenderProgram};
-use crate::shaders::triangle::TriangleRenderProgram;
+use crate::shader_programs::lines::LinesRenderProgram;
+use crate::shader_programs::points::{Point, PointsRenderProgram};
+use crate::shader_programs::triangle::TriangleRenderProgram;
 use anyhow::Result;
 use std::rc::Rc;
 

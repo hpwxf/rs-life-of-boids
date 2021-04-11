@@ -97,7 +97,7 @@ impl PointsRenderProgram {
 }
 
 // Shader sources
-pub static VS_SRC: &[u8] = b"
+const VS_SRC: &[u8] = b"
     #version 330 core
     layout (location = 0) in vec2 position;
     layout (location = 1) in vec2 velocity;
@@ -129,7 +129,7 @@ pub static VS_SRC: &[u8] = b"
         gl_Position = vec4(transform * vec3(position, 1.0), 1.0);
     }\0";
 
-pub static FS_SRC: &[u8] = b"
+const FS_SRC: &[u8] = b"
     #version 330 core
     out vec4 frag_colour;
 

@@ -2,7 +2,7 @@ use super::support::gl;
 use std::rc::Rc;
 
 pub struct VertexArray {
-    pub vertex_array_id: gl::types::GLuint,
+    pub(super) vertex_array_id: gl::types::GLuint,
     gl: Rc<gl::Gl>,
 }
 
