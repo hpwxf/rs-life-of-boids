@@ -3,16 +3,14 @@ use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::{Fullscreen, Window, WindowBuilder};
 use glutin::{ContextBuilder, ContextWrapper, PossiblyCurrent};
 
-use crate::utils::calculate_relative_brightness;
 #[allow(unused_imports)]
 use crate::fps::{FpsCache, FpsCounter};
 use crate::render::{Renderer, RendererConfig};
-use crate::shader_programs::points::Point;
-use cgmath::{Basis2, Point2, Rad, Rotation, Rotation2, Vector2, Zero};
 use glutin::dpi::PhysicalSize;
-use image::io::Reader as ImageReader;
-use rand::distributions::{IndependentSample, Range};
 use std::path::PathBuf;
+
+use anyhow::{anyhow,Result};
+use crate::points_simulator::PointsSimulator;
 
 #[macro_use]
 mod glx;
@@ -20,6 +18,7 @@ mod utils;
 mod fps;
 mod render;
 mod shader_programs;
+mod points_simulator;
 
 const TITLE: &str = "new rusty boids";
 // const CACHE_FPS_MS: u64 = 500;
@@ -30,13 +29,12 @@ pub enum WindowConfig {
     Default,
 }
 
-fn main() {
+fn main() -> Result<()> {
     let events_loop = EventLoop::new();
 
     let monitor = events_loop
         .available_monitors()
-        .nth(1)
-        .expect("This monitor is not available");
+        .nth(1).ok_or(anyhow!("Cannot use this monitor"))?;
     let fullscreen = Some(Fullscreen::Borderless(Some(monitor)));
 
     let wb = WindowBuilder::new()
@@ -69,34 +67,13 @@ fn main() {
 
     let gl = glx::gl_init(&windowed_context);
 
-    let mut renderer = Renderer::new(gl, renderer_config).expect("Renderer build");
-    renderer.initialize().expect("Renderer initialization");
+    let mut renderer = Renderer::new(gl, renderer_config)?;
+    renderer.initialize()?;
 
     println!("Current dir = {:?}", std::env::current_dir());
 
-    let img = ImageReader::open("./assets/Grid_Concept_Art.png")
-        .unwrap()
-        .decode()
-        .unwrap();
-    let img = img.to_bgr8();
-    let (img_width, img_height) = img.dimensions();
-
-    let mut points = Vec::<Point>::with_capacity(10_000);
-    let get_pos = |t: f32| Point2 {
-        x: (window_info.width as f32) * (0.5 + 0.4 * f32::cos(t)),
-        y: (window_info.height as f32) * (0.5 + 0.4 * f32::sin(t)),
-    };
-
-    let mut v: f32 = 0.0;
-    points.resize_with(points.capacity(), || {
-        v += 1.0;
-        Point {
-            position: get_pos(v),
-            velocity: Vector2::zero(),
-        }
-    });
-    let mut rng = rand::thread_rng();
-
+    let mut s = PointsSimulator::new(window_info);
+    
     events_loop.run(move |event, _, control_flow| {
         // println!("{:?}", event);
         // *control_flow = ControlFlow::Wait; // no auto refresh
@@ -157,36 +134,11 @@ fn main() {
             Event::RedrawRequested(_) | Event::NewEvents(StartCause::Poll) => {
                 if let Ok(elapsed) = start_time.elapsed() {
                     let PhysicalSize { width, height } = windowed_context.window().inner_size();
-
-                    let get_pixel_brightness = |x: f32, y: f32| {
-                        let pixel = img.get_pixel(
-                            u32::clamp(
-                                (x / width as f32 * img_width as f32) as u32,
-                                0,
-                                img_width - 1,
-                            ),
-                            u32::clamp(
-                                (y / height as f32 * img_height as f32) as u32,
-                                0,
-                                img_height - 1,
-                            ),
-                        );
-                        let v = pixel.0;
-                        calculate_relative_brightness(v[2], v[1], v[0])
-                    };
-
                     let ratio = width as f32 / height as f32;
-                    ///////////////////
-                    let vel_space = Range::new(0., 10.0);
-                    let ang_space = Range::new(0., 6.28);
-                    for p in &mut points {
-                        let a = ang_space.ind_sample(&mut rng);
-                        let m = vel_space.ind_sample(&mut rng);
-                        p.velocity = Basis2::from_angle(Rad(a)).rotate_vector(Vector2::new(0., m))
-                            * (1.0 - get_pixel_brightness(p.position.x, p.position.y));
-                        p.position += p.velocity / 5.0;
-                    }
-                    ///////////////////
+
+                    s.update((width, height));
+                    let points = &s.points;
+                    
                     renderer
                         .render(
                             elapsed.as_secs_f32(),
@@ -196,6 +148,8 @@ fn main() {
                             (width, height),
                         )
                         .unwrap();
+                    
+                    
                     windowed_context.swap_buffers().unwrap();
                 }
             }

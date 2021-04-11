@@ -18,7 +18,7 @@ pub struct PointsRenderProgram {
     program: ProgramUnit,
     transform: Matrix3<f32>,
     point_size: f32,
-    max_speed: f32,
+    pub max_speed: f32,
 }
 
 impl PointsRenderProgram {
@@ -26,8 +26,8 @@ impl PointsRenderProgram {
         Ok(PointsRenderProgram {
             program: ProgramUnit::new(&gl, &VS_SRC, &FS_SRC)?,
             transform: vertex_transform_2d(size.width as f32, size.height as f32),
-            point_size: 3.0,
-            max_speed: 10.0,
+            point_size: 5.0,
+            max_speed: 5.0,
         })
     }
 
@@ -124,7 +124,8 @@ const VS_SRC: &[u8] = b"
     float a = atan(velocity.y, velocity.x);
     void main() {
         // pointColor = vec4(rgb_from_hsb(vec3(a/two_pi, 1 - (mag_2 / maxSpeedSquared), 1.0)), 1.0);
-        pointColor = vec4(mag_2 / maxSpeedSquared, mag_2 / maxSpeedSquared, mag_2 / maxSpeedSquared, 1.0);
+        // pointColor = vec4(mag_2 / maxSpeedSquared, mag_2 / maxSpeedSquared, mag_2 / maxSpeedSquared, 1.0);
+        pointColor = vec4(1.0 - mag_2 / maxSpeedSquared, 1.0 - mag_2 / maxSpeedSquared, 1.0 - mag_2 / maxSpeedSquared, 1.0);
         gl_PointSize = pointSize;
         gl_Position = vec4(transform * vec3(position, 1.0), 1.0);
     }\0";
