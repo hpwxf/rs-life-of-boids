@@ -1,5 +1,5 @@
-use std::rc::Rc;
 use super::support::gl;
+use std::rc::Rc;
 
 // https://learnopengl.com/Getting-started/Hello-Triangle
 // https://github.com/bwasty/learn-opengl-rs/tree/master/src/_1_getting_started (warning out-of-date)
@@ -14,7 +14,10 @@ impl Buffer {
         unsafe {
             gl.GenBuffers(1, &mut buffer_id);
         }
-        Buffer { buffer_id, gl: gl.clone() }
+        Buffer {
+            buffer_id,
+            gl: gl.clone(),
+        }
     }
 
     pub fn bind(&self, target: gl::types::GLenum) {
@@ -31,4 +34,3 @@ impl Drop for Buffer {
         }
     }
 }
-

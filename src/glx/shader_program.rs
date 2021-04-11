@@ -1,7 +1,7 @@
-use std::rc::Rc;
 use super::support::gl;
-use std::ffi::{CString, CStr};
 use anyhow::{anyhow, Result};
+use std::ffi::{CStr, CString};
+use std::rc::Rc;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -20,14 +20,21 @@ pub struct ShaderProgram {
 }
 
 impl ShaderProgram {
-    pub fn new(gl: &Rc<gl::Gl>, vertex_shader_src: &'static [u8], fragment_shader_src: &'static [u8]) -> Result<ShaderProgram> {
+    pub fn new(
+        gl: &Rc<gl::Gl>,
+        vertex_shader_src: &'static [u8],
+        fragment_shader_src: &'static [u8],
+    ) -> Result<ShaderProgram> {
         unsafe {
             let vertex_shader = compile_shader(&gl, vertex_shader_src, gl::VERTEX_SHADER)?;
             let fragment_shader = compile_shader(&gl, fragment_shader_src, gl::FRAGMENT_SHADER)?;
             let program = link_program(&gl, vertex_shader, fragment_shader)?;
             gl.DeleteShader(vertex_shader);
             gl.DeleteShader(fragment_shader);
-            Ok(ShaderProgram { program_id: program, gl: gl.clone() })
+            Ok(ShaderProgram {
+                program_id: program,
+                gl: gl.clone(),
+            })
         }
     }
 
@@ -42,7 +49,10 @@ impl ShaderProgram {
         unsafe {
             let location = self.gl.GetAttribLocation(self.program_id, c_name.as_ptr());
             if location == -1 {
-                Err(anyhow!(ShaderError::Lookup(format!("'couldn't find attribute named '{}'", name))))
+                Err(anyhow!(ShaderError::Lookup(format!(
+                    "'couldn't find attribute named '{}'",
+                    name
+                ))))
             } else {
                 Ok(location)
             }
@@ -54,7 +64,10 @@ impl ShaderProgram {
         unsafe {
             let location = self.gl.GetUniformLocation(self.program_id, c_name.as_ptr());
             if location == -1 {
-                Err(anyhow!(ShaderError::Lookup(format!("'couldn't find uniform named '{}'", name))))
+                Err(anyhow!(ShaderError::Lookup(format!(
+                    "'couldn't find uniform named '{}'",
+                    name
+                ))))
             } else {
                 Ok(location)
             }
@@ -70,7 +83,11 @@ impl Drop for ShaderProgram {
     }
 }
 
-unsafe fn compile_shader(gl: &gl::Gl, src: &'static [u8], shader_type: gl::types::GLenum) -> Result<gl::types::GLuint, ShaderError> {
+unsafe fn compile_shader(
+    gl: &gl::Gl,
+    src: &'static [u8],
+    shader_type: gl::types::GLenum,
+) -> Result<gl::types::GLuint, ShaderError> {
     let shader = gl.CreateShader(shader_type);
 
     // Attempt to compile shader
@@ -92,14 +109,20 @@ unsafe fn compile_shader(gl: &gl::Gl, src: &'static [u8], shader_type: gl::types
             std::ptr::null_mut(),
             info_log.as_mut_ptr(), // as *mut gl::types::GLchar : FIXME useless ?
         );
-        let message = CStr::from_ptr(info_log.as_ptr()).to_str().expect("ShaderInfoLog not valid");
+        let message = CStr::from_ptr(info_log.as_ptr())
+            .to_str()
+            .expect("ShaderInfoLog not valid");
         Err(ShaderError::Compilation(message.into()))
     } else {
         Ok(shader)
     }
 }
 
-unsafe fn link_program(gl: &gl::Gl, vertex_shader: gl::types::GLuint, fragment_shader: gl::types::GLuint) -> Result<gl::types::GLuint, ShaderError> {
+unsafe fn link_program(
+    gl: &gl::Gl,
+    vertex_shader: gl::types::GLuint,
+    fragment_shader: gl::types::GLuint,
+) -> Result<gl::types::GLuint, ShaderError> {
     let program = gl.CreateProgram();
     gl.AttachShader(program, vertex_shader);
     gl.AttachShader(program, fragment_shader);
@@ -129,15 +152,18 @@ unsafe fn link_program(gl: &gl::Gl, vertex_shader: gl::types::GLuint, fragment_s
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn shader_error_should_explains_the_reason() {
         let message = "Cannot find it";
-        let result : Result<()> = Err(anyhow!(ShaderError::Lookup(message.into())));
+        let result: Result<()> = Err(anyhow!(ShaderError::Lookup(message.into())));
 
         assert!(result.is_err());
         if let Err(err) = result {
-            assert_eq!(format!("{}", err), format!("Shader lookup error: {}", message)); 
+            assert_eq!(
+                format!("{}", err),
+                format!("Shader lookup error: {}", message)
+            );
         }
     }
 }

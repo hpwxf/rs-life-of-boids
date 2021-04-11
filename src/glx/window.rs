@@ -2,8 +2,8 @@ use std::ffi::CStr;
 use std::rc::Rc;
 
 use cgmath::Matrix3;
-use glutin::{ContextWrapper, PossiblyCurrent};
 use glutin::window::Window;
+use glutin::{ContextWrapper, PossiblyCurrent};
 
 use super::support::gl;
 
@@ -15,15 +15,16 @@ pub struct WindowSizeInfo {
 }
 
 #[derive(Debug)]
-pub enum CustomError {
-}
+pub enum CustomError {}
 
 pub fn gl_init(windowed_context: &ContextWrapper<PossiblyCurrent, Window>) -> gl::Gl {
     let gl_context = windowed_context.context();
     let gl = gl::Gl::load_with(|ptr| gl_context.get_proc_address(ptr) as *const _);
 
     let version = unsafe {
-        let data = CStr::from_ptr(gl.GetString(gl::VERSION) as *const _).to_bytes().to_vec();
+        let data = CStr::from_ptr(gl.GetString(gl::VERSION) as *const _)
+            .to_bytes()
+            .to_vec();
         String::from_utf8(data).unwrap()
     };
 
@@ -57,4 +58,3 @@ pub fn clear_screen(gl: &Rc<gl::Gl>, color: [f32; 4]) {
 pub fn vertex_transform_2d(width: f32, height: f32) -> Matrix3<f32> {
     Matrix3::new(2. / width, 0., 0., 0., -2. / height, 0., -1., 1., 1.)
 }
-

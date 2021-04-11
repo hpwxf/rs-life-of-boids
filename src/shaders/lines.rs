@@ -1,8 +1,8 @@
-use crate::glx::{ProgramUnit, vertex_transform_2d};
 use crate::glx::gl;
+use crate::glx::{vertex_transform_2d, ProgramUnit};
 use anyhow::Result;
+use cgmath::{Matrix, Matrix3};
 use std::rc::Rc;
-use cgmath::{Matrix3, Matrix};
 
 pub struct LinesRenderProgram {
     program: ProgramUnit,
@@ -11,7 +11,11 @@ pub struct LinesRenderProgram {
 impl LinesRenderProgram {
     pub fn new(gl: Rc<gl::Gl>) -> Result<Self> {
         Ok(LinesRenderProgram {
-            program: ProgramUnit::new(&gl, &crate::shaders::lines::VS_SRC, &crate::shaders::lines::FS_SRC)?,
+            program: ProgramUnit::new(
+                &gl,
+                &crate::shaders::lines::VS_SRC,
+                &crate::shaders::lines::FS_SRC,
+            )?,
         })
     }
 
@@ -50,15 +54,26 @@ impl LinesRenderProgram {
         let (width, height) = size;
         let transform: Matrix3<f32> = vertex_transform_2d(width as f32, height as f32);
 
-        let mut vertex_data = Vec::<f32>::with_capacity(100); // need better size 
+        let mut vertex_data = Vec::<f32>::with_capacity(100); // need better size
         vertex_data.extend_from_slice(&[(0 as f32) / 2.0, (size.1 as f32) / 2.0, 1.0, 1.0, 1.0]);
         vertex_data.extend_from_slice(&[(size.0 as f32), (size.1 as f32) / 2.0, 1.0, 1.0, 1.0]);
         vertex_data.extend_from_slice(&[(size.0 as f32) / 2.0, (0 as f32) / 2.0, 1.0, 1.0, 1.0]);
-        vertex_data.extend_from_slice(&[(size.0 as f32) / 2.0, (size.1 as f32) / 2.0, 1.0, 1.0, 1.0]);
+        vertex_data.extend_from_slice(&[
+            (size.0 as f32) / 2.0,
+            (size.1 as f32) / 2.0,
+            1.0,
+            1.0,
+            1.0,
+        ]);
 
         self.program.activate();
         unsafe {
-            gl.UniformMatrix3fv(self.program.get_uniform("transform")?, 1, gl::FALSE, transform.as_ptr());
+            gl.UniformMatrix3fv(
+                self.program.get_uniform("transform")?,
+                1,
+                gl::FALSE,
+                transform.as_ptr(),
+            );
             gl.BufferData(
                 gl::ARRAY_BUFFER,
                 (vertex_data.len() * std::mem::size_of::<f32>()) as gl::types::GLsizeiptr,
@@ -72,7 +87,6 @@ impl LinesRenderProgram {
         Ok(())
     }
 }
-
 
 // Target Vertex Shader
 const VS_SRC: &'static [u8] = b"
@@ -98,4 +112,3 @@ void main() {
     fragColor = vec4(color, 1.0);
 }
 \0";
-

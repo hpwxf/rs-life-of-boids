@@ -1,7 +1,7 @@
-use std::path::PathBuf;
+use crate::glx::gl;
 use glutin::dpi::PhysicalSize;
 use glutin::window::Window;
-use crate::glx::gl;
+use std::path::PathBuf;
 use std::rc::Rc;
 
 pub fn save_image(gl: Rc<gl::Gl>, filepath: &PathBuf, window: &Window) {
@@ -16,7 +16,15 @@ pub fn save_image(gl: Rc<gl::Gl>, filepath: &PathBuf, window: &Window) {
     unsafe {
         gl.PixelStorei(gl::PACK_ALIGNMENT, 4);
         gl.ReadBuffer(gl::FRONT);
-        gl.ReadPixels(0, 0, width as i32, height as i32, gl::RGB, gl::UNSIGNED_BYTE, data.as_ptr() as *mut _);
+        gl.ReadPixels(
+            0,
+            0,
+            width as i32,
+            height as i32,
+            gl::RGB,
+            gl::UNSIGNED_BYTE,
+            data.as_ptr() as *mut _,
+        );
     }
 
     let mut img = image::RgbImage::new(width, height);

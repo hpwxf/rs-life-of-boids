@@ -1,3 +1,3 @@
-pub mod triangle;
-pub mod points;
 pub mod lines;
+pub mod points;
+pub mod triangle;

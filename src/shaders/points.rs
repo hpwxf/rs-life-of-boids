@@ -3,8 +3,8 @@ use std::rc::Rc;
 use anyhow::Result;
 use cgmath::{Matrix, Matrix3, Point2, Vector2};
 
-use crate::glx::{ProgramUnit, WindowSizeInfo, vertex_transform_2d};
 use crate::glx::gl;
+use crate::glx::{vertex_transform_2d, ProgramUnit, WindowSizeInfo};
 
 pub type Position = Point2<f32>;
 pub type Velocity = Vector2<f32>;
@@ -70,9 +70,20 @@ impl PointsRenderProgram {
 
         self.program.activate();
         unsafe {
-            gl.UniformMatrix3fv(self.program.get_uniform("transform")?, 1, gl::FALSE, self.transform.as_ptr());
-            gl.Uniform1f(self.program.get_uniform("pointSize")?, self.point_size as gl::types::GLfloat);
-            gl.Uniform1f(self.program.get_uniform("maxSpeedSquared")?, self.max_speed.powi(2) as gl::types::GLfloat);
+            gl.UniformMatrix3fv(
+                self.program.get_uniform("transform")?,
+                1,
+                gl::FALSE,
+                self.transform.as_ptr(),
+            );
+            gl.Uniform1f(
+                self.program.get_uniform("pointSize")?,
+                self.point_size as gl::types::GLfloat,
+            );
+            gl.Uniform1f(
+                self.program.get_uniform("maxSpeedSquared")?,
+                self.max_speed.powi(2) as gl::types::GLfloat,
+            );
             gl.BufferData(
                 gl::ARRAY_BUFFER,
                 (points.len() * std::mem::size_of::<Point>()) as gl::types::GLsizeiptr,
@@ -84,7 +95,6 @@ impl PointsRenderProgram {
         Ok(())
     }
 }
-
 
 // Shader sources
 pub static VS_SRC: &'static [u8] = b"

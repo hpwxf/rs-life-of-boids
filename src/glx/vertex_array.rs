@@ -1,5 +1,5 @@
-use std::rc::Rc;
 use super::support::gl;
+use std::rc::Rc;
 
 pub struct VertexArray {
     pub vertex_array_id: gl::types::GLuint,
@@ -12,7 +12,10 @@ impl VertexArray {
         unsafe {
             gl.GenVertexArrays(1, &mut vertex_array_id);
         }
-        VertexArray { vertex_array_id, gl: gl.clone() }
+        VertexArray {
+            vertex_array_id,
+            gl: gl.clone(),
+        }
     }
 
     pub fn bind(&self) {
@@ -29,4 +32,3 @@ impl Drop for VertexArray {
         }
     }
 }
-

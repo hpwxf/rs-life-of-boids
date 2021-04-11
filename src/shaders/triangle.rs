@@ -1,8 +1,8 @@
-use crate::glx::ProgramUnit;
 use crate::glx::gl;
+use crate::glx::ProgramUnit;
 use anyhow::Result;
-use std::rc::Rc;
 use cgmath::{Matrix, Matrix4};
+use std::rc::Rc;
 
 pub struct TriangleRenderProgram {
     program: ProgramUnit,
@@ -17,7 +17,7 @@ impl TriangleRenderProgram {
 
     pub fn initialize(&mut self) -> Result<()> {
         let gl = self.program.gl();
-        
+
         self.program.prepare();
         self.program.add_uniform("MVP")?;
         let pos_attrib = self.program.add_attribute("vPos")?;
@@ -54,10 +54,16 @@ impl TriangleRenderProgram {
 
         self.program.prepare();
         unsafe {
-            gl.UniformMatrix4fv(self.program.get_uniform("MVP")?, 1, gl::FALSE, mvp.as_ptr() as *const f32);
+            gl.UniformMatrix4fv(
+                self.program.get_uniform("MVP")?,
+                1,
+                gl::FALSE,
+                mvp.as_ptr() as *const f32,
+            );
             gl.BufferData(
                 gl::ARRAY_BUFFER,
-                (crate::shaders::triangle::VERTEX_DATA.len() * std::mem::size_of::<f32>()) as gl::types::GLsizeiptr,
+                (crate::shaders::triangle::VERTEX_DATA.len() * std::mem::size_of::<f32>())
+                    as gl::types::GLsizeiptr,
                 crate::shaders::triangle::VERTEX_DATA.as_ptr() as *const _,
                 gl::STATIC_DRAW,
             );

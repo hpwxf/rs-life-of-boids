@@ -1,9 +1,9 @@
-use std::rc::Rc;
-use anyhow::Result;
 use crate::glx::{self, gl, WindowSizeInfo};
 use crate::shaders::lines::LinesRenderProgram;
 use crate::shaders::points::{Point, PointsRenderProgram};
 use crate::shaders::triangle::TriangleRenderProgram;
+use anyhow::Result;
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct RendererConfig {
@@ -35,15 +35,28 @@ impl Renderer {
         Ok(())
     }
 
-    pub fn render(&self, t: f32, ratio: f32, color: [f32; 4], points: &[Point], size: (u32, u32)) -> Result<()> {
+    pub fn render(
+        &self,
+        t: f32,
+        ratio: f32,
+        color: [f32; 4],
+        points: &[Point],
+        size: (u32, u32),
+    ) -> Result<()> {
         glx::clear_screen(&self.gl, color);
 
         self.lines_program.render(size)?;
-        unsafe { self.gl.UseProgram(0); };
+        unsafe {
+            self.gl.UseProgram(0);
+        };
         self.triangle_program.render(t, ratio)?;
-        unsafe { self.gl.UseProgram(0); };
+        unsafe {
+            self.gl.UseProgram(0);
+        };
         self.points_program.render(points)?;
-        unsafe { self.gl.UseProgram(0); };
+        unsafe {
+            self.gl.UseProgram(0);
+        };
         Ok(())
     }
 }
