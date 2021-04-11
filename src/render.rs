@@ -1,291 +1,49 @@
 use std::rc::Rc;
+use anyhow::Result;
+use crate::glx::{self, gl, WindowSizeInfo};
+use crate::shaders::lines::LinesRenderProgram;
+use crate::shaders::points::{Point, PointsRenderProgram};
+use crate::shaders::triangle::TriangleRenderProgram;
 
-use cgmath::{Matrix, Matrix4, Matrix3};
-
-use crate::shaders::points::{vertex_transform_2d, Point, Velocity};
-use crate::glx::{gl, ProgramUnit};
-use anyhow::{Context, Result};
-
-
+#[derive(Debug)]
 pub struct RendererConfig {
-    pub width: f32,
-    pub height: f32,
+    pub size: WindowSizeInfo,
 }
 
 pub struct Renderer {
     pub gl: Rc<crate::glx::gl::Gl>,
-    // for triangle
-    program1: ProgramUnit,
-    mvp_attrib: gl::types::GLint,
-    // for points
-    program2: ProgramUnit,
-    transform: Matrix3<f32>,
-    point_size: f32,
-    max_speed: f32,
-    trans_loc: gl::types::GLint,
-    size_loc: gl::types::GLint,
-    max_speed_loc: gl::types::GLint,
-    // for lines
-    program3: ProgramUnit,
-    trans_loc2: gl::types::GLint,
+    triangle_program: TriangleRenderProgram,
+    points_program: PointsRenderProgram,
+    lines_program: LinesRenderProgram,
 }
 
 impl Renderer {
-    pub fn new(gl: gl::Gl, config: RendererConfig) -> Renderer {
+    pub fn new(gl: gl::Gl, config: RendererConfig) -> Result<Renderer> {
         let gl = Rc::new(gl);
-
-        let program1 = ProgramUnit::new(&gl, &crate::shaders::triangle::VS_SRC, &crate::shaders::triangle::FS_SRC)
-            .expect("Error while build shader program");
-        let program2 = ProgramUnit::new(&gl, &crate::shaders::points::VS_SRC, &crate::shaders::points::FS_SRC)
-            .expect("Error while build shader program");
-        let program3 = ProgramUnit::new(&gl, &crate::shaders::lines::VS_SRC, &crate::shaders::lines::FS_SRC)
-            .expect("Error while build shader program");
-
-        Renderer {
+        Ok(Renderer {
             gl: gl.clone(),
-            // for triangle
-            program1,
-            mvp_attrib: 0,
-            // for points
-            program2,
-            transform: vertex_transform_2d(config.width, config.height),
-            point_size: 3.0,
-            max_speed: 10.0,
-            trans_loc: 0,
-            size_loc: 0,
-            max_speed_loc: 0,
-            // for lines
-            program3,
-            trans_loc2: 0,
-        }
+            triangle_program: TriangleRenderProgram::new(gl.clone())?,
+            points_program: PointsRenderProgram::new(gl.clone(), config.size)?,
+            lines_program: LinesRenderProgram::new(gl.clone())?,
+        })
     }
 
-    pub fn initialize(&mut self) -> Result<()>{
-        self.initialize_points();
-        self.initialize_triangle();
-        self.initialize_lines();
+    pub fn initialize(&mut self) -> Result<()> {
+        self.points_program.initialize()?;
+        self.triangle_program.initialize()?;
+        self.lines_program.initialize()?;
         Ok(())
     }
 
-    fn initialize_triangle(&mut self) {
-        let gl = self.gl.clone();
+    pub fn render(&self, t: f32, ratio: f32, color: [f32; 4], points: &[Point], size: (u32, u32)) -> Result<()> {
+        glx::clear_screen(&self.gl, color);
 
-        self.program1.activate();
-        unsafe {
-            gl.BufferData(
-                gl::ARRAY_BUFFER,
-                (crate::shaders::triangle::VERTEX_DATA.len() * std::mem::size_of::<f32>()) as gl::types::GLsizeiptr,
-                crate::shaders::triangle::VERTEX_DATA.as_ptr() as *const _,
-                gl::STATIC_DRAW,
-            );
-        }
-
-        self.mvp_attrib = self
-            .program1.program
-            .get_uniform_location("MVP")
-            .expect("Could not find uniform");
-        let pos_attrib = self
-            .program1.program
-            .get_attrib_location("vPos")
-            .expect("Could not find vPos attribute");
-        let color_attrib = self
-            .program1.program
-            .get_attrib_location("vCol")
-            .expect("Could not find vCol attribute");
-
-        unsafe {
-            gl.VertexAttribPointer(
-                pos_attrib as gl::types::GLuint,
-                2,
-                gl::FLOAT,
-                gl::FALSE,
-                5 * std::mem::size_of::<f32>() as gl::types::GLsizei,
-                std::ptr::null(), // set offset in data
-            );
-            gl.VertexAttribPointer(
-                color_attrib as gl::types::GLuint,
-                3,
-                gl::FLOAT,
-                gl::FALSE,
-                5 * std::mem::size_of::<f32>() as gl::types::GLsizei,
-                (2 * std::mem::size_of::<f32>()) as *const () as *const _, // set offset in data
-            );
-
-            gl.EnableVertexAttribArray(pos_attrib as gl::types::GLuint);
-            gl.EnableVertexAttribArray(color_attrib as gl::types::GLuint);
-        };
-    }
-
-    fn initialize_points(&mut self) -> Result<()>{
-        let gl = self.gl.clone();
-
-        self.program2.activate();
-        unsafe {
-            self.program2.add_uniform("transform")?;
-            
-            
-            
-            
-            // Set the transform uniform
-            self.trans_loc = self
-                .program2.program
-                .get_uniform_location("transform")
-                .expect("Could not find uniform");
-            // Set the point size
-            self.size_loc = self
-                .program2.program
-                .get_uniform_location("pointSize")
-                .expect("Could not find uniform");
-            // Set max speed
-            self.max_speed_loc = self
-                .program2.program
-                .get_uniform_location("maxSpeedSquared")
-                .expect("Could not find uniform");
-
-            // Specify the layout of the vertex data
-            let pos_loc = self
-                .program2.program
-                .get_attrib_location("position")
-                .expect("could not find position");
-            gl.EnableVertexAttribArray(pos_loc as gl::types::GLuint);
-            gl.VertexAttribPointer(
-                pos_loc as gl::types::GLuint,
-                2,
-                gl::FLOAT,
-                gl::FALSE,
-                std::mem::size_of::<Point>() as gl::types::GLsizei,
-                std::ptr::null(), // or std::mem::size_of::<Position>() as *const gl::types::GLvoid,
-            );
-            let vel_loc = self
-                .program2.program
-                .get_attrib_location("velocity")
-                .expect("could not find velocity");
-            gl.EnableVertexAttribArray(vel_loc as gl::types::GLuint);
-            gl.VertexAttribPointer(
-                vel_loc as gl::types::GLuint,
-                2,
-                gl::FLOAT,
-                gl::FALSE,
-                std::mem::size_of::<Point>() as gl::types::GLsizei,
-                std::mem::size_of::<Velocity>() as *const gl::types::GLvoid,
-            );
-
-            // Allow shader to specify point size
-            gl.Enable(gl::PROGRAM_POINT_SIZE);
-        }
+        self.lines_program.render(size)?;
+        unsafe { self.gl.UseProgram(0); };
+        self.triangle_program.render(t, ratio)?;
+        unsafe { self.gl.UseProgram(0); };
+        self.points_program.render(points)?;
+        unsafe { self.gl.UseProgram(0); };
         Ok(())
-    }
-
-    fn initialize_lines(&mut self) {
-        let gl = self.gl.clone();
-
-        self.program3.activate();
-
-        self.trans_loc2 = self
-            .program3.program
-            .get_uniform_location("transform")
-            .expect("Could not find uniform");
-        let pos_attrib = self
-            .program3.program
-            .get_attrib_location("vPos")
-            .expect("Could not find vPos attribute");
-        let color_attrib = self
-            .program3.program
-            .get_attrib_location("vCol")
-            .expect("Could not find vCol attribute");
-
-        unsafe {
-            gl.VertexAttribPointer(
-                pos_attrib as gl::types::GLuint,
-                2,
-                gl::FLOAT,
-                gl::FALSE,
-                5 * std::mem::size_of::<f32>() as gl::types::GLsizei,
-                std::ptr::null(), // set offset in data
-            );
-            gl.VertexAttribPointer(
-                color_attrib as gl::types::GLuint,
-                3,
-                gl::FLOAT,
-                gl::FALSE,
-                5 * std::mem::size_of::<f32>() as gl::types::GLsizei,
-                (2 * std::mem::size_of::<f32>()) as *const () as *const _, // set offset in data
-            );
-
-            gl.EnableVertexAttribArray(pos_attrib as gl::types::GLuint);
-            gl.EnableVertexAttribArray(color_attrib as gl::types::GLuint);
-        };
-    }
-
-    pub fn render(&self, t: f32, ratio: f32, color: [f32; 4], points: &[Point], size: (u32, u32)) {
-        unsafe {
-            self.gl.ClearColor(color[0], color[1], color[2], color[3]);
-            self.gl.Clear(gl::COLOR_BUFFER_BIT);
-        }
-
-        self.render_lines(t, size);
-        unsafe { self.gl.UseProgram(0); };
-        self.render_triangle(t, ratio);
-        unsafe { self.gl.UseProgram(0); };
-        self.render_points(points);
-        unsafe { self.gl.UseProgram(0); };
-    }
-
-    fn render_triangle(&self, t: f32, ratio: f32) {
-        let m = Matrix4::from_angle_z(cgmath::Rad(t));
-        let p = cgmath::ortho(-ratio, ratio, -1., 1., 1., -1.);
-        let mvp = p * m;
-
-        self.program1.activate();
-        unsafe {
-            self.gl.UniformMatrix4fv(self.mvp_attrib, 1, gl::FALSE, mvp.as_ptr() as *const f32);
-            self.gl.BindVertexArray(self.program1.vao.vertex_array_id);
-            self.gl.DrawArrays(gl::TRIANGLES, 0, 3);
-        }
-    }
-
-    fn render_points(&self, points: &[Point]) {
-        self.program2.activate();
-        unsafe {
-            self.gl.UniformMatrix3fv(self.trans_loc, 1, gl::FALSE, self.transform.as_ptr());
-            self.gl.Uniform1f(self.size_loc, self.point_size as gl::types::GLfloat);
-            self.gl.Uniform1f(self.max_speed_loc, self.max_speed.powi(2) as gl::types::GLfloat);
-            self.gl.BindVertexArray(self.program2.vao.vertex_array_id);
-
-            // This _should_ implement buffer orphaning
-            self.gl.BufferData(gl::ARRAY_BUFFER, 0, std::ptr::null(), gl::STREAM_DRAW);
-            self.gl.BufferData(
-                gl::ARRAY_BUFFER,
-                (points.len() * std::mem::size_of::<Point>()) as gl::types::GLsizeiptr,
-                points.as_ptr() as *const _,
-                gl::STREAM_DRAW,
-            );
-            self.gl.DrawArrays(gl::POINTS, 0, points.len() as i32);
-        }
-    }
-
-    fn render_lines(&self, t: f32, size: (u32, u32)) {
-        self.program3.activate();
-        unsafe {
-            self.gl.UniformMatrix3fv(self.trans_loc2, 1, gl::FALSE, self.transform.as_ptr());
-            self.gl.BindVertexArray(self.program3.vao.vertex_array_id);
-
-            let mut vertex_data = Vec::<f32>::with_capacity(100); // need better size 
-            vertex_data.extend_from_slice(&[(0 as f32) / 2.0, (size.1 as f32) / 2.0, 1.0, 1.0, 1.0]);
-            vertex_data.extend_from_slice(&[(size.0 as f32), (size.1 as f32) / 2.0, 1.0, 1.0, 1.0]);
-            vertex_data.extend_from_slice(&[(size.0 as f32) / 2.0, (0 as f32) / 2.0, 1.0, 1.0, 1.0]);
-            vertex_data.extend_from_slice(&[(size.0 as f32) / 2.0, (size.1 as f32) / 2.0, 1.0, 1.0, 1.0]);
-            
-            self.gl.BufferData(
-                gl::ARRAY_BUFFER,
-                (vertex_data.len() * std::mem::size_of::<f32>()) as gl::types::GLsizeiptr,
-                vertex_data.as_ptr() as *const _,
-                gl::STREAM_DRAW,
-            );
-
-            // https://docs.gl/gl3/glDrawArrays
-            // https://www.khronos.org/opengl/wiki/Primitive (use gl::LINE_LOOP to make lines)
-            self.gl.DrawArrays(gl::LINES, 0, (vertex_data.len() / 5) as i32);
-        }
     }
 }

@@ -10,7 +10,6 @@ use cgmath::{Vector2, Point2, Rad, Basis2, Rotation2, Rotation, Zero};
 use rand::distributions::{Range, IndependentSample};
 use glutin::dpi::PhysicalSize;
 use std::path::PathBuf;
-use image::ImageFormat;
 use image::io::Reader as ImageReader;
 use crate::aux::calculate_relative_brightness;
 
@@ -32,7 +31,6 @@ pub enum WindowConfig {
 
 fn main() {
     let events_loop = EventLoop::new();
-    let window_config = WindowConfig::Default;
 
     let monitor = events_loop.available_monitors().nth(1).expect("This monitor is not available");
     let fullscreen = Some(Fullscreen::Borderless(Some(monitor)));
@@ -60,12 +58,12 @@ fn main() {
 
 
     let window_info = glx::get_window_size_info(windowed_context.window()).expect("Cannot get window size info");
-    let renderer_config = RendererConfig { width: window_info.width, height: window_info.height };
+    let renderer_config = RendererConfig { size: window_info };
 
     let gl = glx::gl_init(&windowed_context);
 
-    let mut renderer = Renderer::new(gl, renderer_config);
-    renderer.initialize();
+    let mut renderer = Renderer::new(gl, renderer_config).expect("Renderer build");
+    renderer.initialize().expect("Renderer initialization");
 
     println!("Current dir = {:?}", std::env::current_dir());
 
@@ -77,8 +75,8 @@ fn main() {
     let mut points = Vec::<Point>::with_capacity(10_000);
     let get_pos = |t: f32| {
         Point2 {
-            x: window_info.width * (0.5 + 0.4 * f32::cos(t)),
-            y: window_info.height * (0.5 + 0.4 * f32::sin(t)),
+            x: (window_info.width as f32) * (0.5 + 0.4 * f32::cos(t)),
+            y: (window_info.height as f32) * (0.5 + 0.4 * f32::sin(t)),
         }
     };
 
@@ -155,7 +153,7 @@ fn main() {
                         p.position += p.velocity / 5.0;
                     }
                     ///////////////////
-                    renderer.render(elapsed.as_secs_f32(), ratio, [0.0, 0.0, 0.0, 0.0], &points, (width, height));
+                    renderer.render(elapsed.as_secs_f32(), ratio, [0.0, 0.0, 0.0, 0.0], &points, (width, height)).unwrap();
                     windowed_context.swap_buffers().unwrap();
                 }
             }

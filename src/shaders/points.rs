@@ -1,4 +1,10 @@
-use cgmath::{Point2, Vector2, Matrix3};
+use std::rc::Rc;
+
+use anyhow::Result;
+use cgmath::{Matrix, Matrix3, Point2, Vector2};
+
+use crate::glx::{ProgramUnit, WindowSizeInfo, vertex_transform_2d};
+use crate::glx::gl;
 
 pub type Position = Point2<f32>;
 pub type Velocity = Vector2<f32>;
@@ -8,9 +14,77 @@ pub struct Point {
     pub(crate) velocity: Velocity,
 }
 
-pub fn vertex_transform_2d(width: f32, height: f32) -> Matrix3<f32> {
-    Matrix3::new(2. / width, 0., 0., 0., -2. / height, 0., -1., 1., 1.)
+pub struct PointsRenderProgram {
+    program: ProgramUnit,
+    transform: Matrix3<f32>,
+    point_size: f32,
+    max_speed: f32,
 }
+
+impl PointsRenderProgram {
+    pub fn new(gl: Rc<gl::Gl>, size: WindowSizeInfo) -> Result<Self> {
+        Ok(PointsRenderProgram {
+            program: ProgramUnit::new(&gl, &VS_SRC, &FS_SRC)?,
+            transform: vertex_transform_2d(size.width as f32, size.height as f32),
+            point_size: 3.0,
+            max_speed: 10.0,
+        })
+    }
+
+    pub fn initialize(&mut self) -> Result<()> {
+        let gl = self.program.gl();
+
+        self.program.prepare();
+        unsafe {
+            self.program.add_uniform("transform")?;
+            self.program.add_uniform("pointSize")?;
+            self.program.add_uniform("maxSpeedSquared")?;
+            // Specify the layout of the vertex data
+            let pos_loc = self.program.add_attribute("position")?;
+            gl.VertexAttribPointer(
+                pos_loc as gl::types::GLuint,
+                2,
+                gl::FLOAT,
+                gl::FALSE,
+                std::mem::size_of::<Point>() as gl::types::GLsizei,
+                std::ptr::null(), // or 0 as *const gl::types::GLvoid,
+            );
+            let vel_loc = self.program.add_attribute("velocity")?;
+            gl.VertexAttribPointer(
+                vel_loc as gl::types::GLuint,
+                2,
+                gl::FLOAT,
+                gl::FALSE,
+                std::mem::size_of::<Point>() as gl::types::GLsizei,
+                std::mem::size_of::<Position>() as *const gl::types::GLvoid,
+            );
+
+            // Allow shader to specify point size
+            gl.Enable(gl::PROGRAM_POINT_SIZE);
+        }
+        Ok(())
+    }
+
+    pub fn render(&self, points: &[Point]) -> Result<()> {
+        let gl = self.program.gl();
+
+        self.program.activate();
+        unsafe {
+            gl.UniformMatrix3fv(self.program.get_uniform("transform")?, 1, gl::FALSE, self.transform.as_ptr());
+            gl.Uniform1f(self.program.get_uniform("pointSize")?, self.point_size as gl::types::GLfloat);
+            gl.Uniform1f(self.program.get_uniform("maxSpeedSquared")?, self.max_speed.powi(2) as gl::types::GLfloat);
+            gl.BufferData(
+                gl::ARRAY_BUFFER,
+                (points.len() * std::mem::size_of::<Point>()) as gl::types::GLsizeiptr,
+                points.as_ptr() as *const _,
+                gl::STREAM_DRAW,
+            );
+            gl.DrawArrays(gl::POINTS, 0, points.len() as i32);
+        }
+        Ok(())
+    }
+}
+
 
 // Shader sources
 pub static VS_SRC: &'static [u8] = b"

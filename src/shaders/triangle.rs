@@ -1,3 +1,72 @@
+use crate::glx::ProgramUnit;
+use crate::glx::gl;
+use anyhow::Result;
+use std::rc::Rc;
+use cgmath::{Matrix, Matrix4};
+
+pub struct TriangleRenderProgram {
+    program: ProgramUnit,
+}
+
+impl TriangleRenderProgram {
+    pub fn new(gl: Rc<gl::Gl>) -> Result<Self> {
+        Ok(TriangleRenderProgram {
+            program: ProgramUnit::new(&gl, &VS_SRC, &FS_SRC)?,
+        })
+    }
+
+    pub fn initialize(&mut self) -> Result<()> {
+        let gl = self.program.gl();
+        
+        self.program.prepare();
+        self.program.add_uniform("MVP")?;
+        let pos_attrib = self.program.add_attribute("vPos")?;
+        let color_attrib = self.program.add_attribute("vCol")?;
+
+        unsafe {
+            gl.VertexAttribPointer(
+                pos_attrib as gl::types::GLuint,
+                2,
+                gl::FLOAT,
+                gl::FALSE,
+                5 * std::mem::size_of::<f32>() as gl::types::GLsizei,
+                std::ptr::null(), // set offset in data
+            );
+            gl.VertexAttribPointer(
+                color_attrib as gl::types::GLuint,
+                3,
+                gl::FLOAT,
+                gl::FALSE,
+                5 * std::mem::size_of::<f32>() as gl::types::GLsizei,
+                (2 * std::mem::size_of::<f32>()) as *const () as *const _, // set offset in data
+            );
+        };
+
+        Ok(())
+    }
+
+    pub fn render(&self, t: f32, ratio: f32) -> Result<()> {
+        let gl = self.program.gl();
+
+        let m = Matrix4::from_angle_z(cgmath::Rad(t));
+        let p = cgmath::ortho(-ratio, ratio, -1., 1., 1., -1.);
+        let mvp = p * m;
+
+        self.program.prepare();
+        unsafe {
+            gl.UniformMatrix4fv(self.program.get_uniform("MVP")?, 1, gl::FALSE, mvp.as_ptr() as *const f32);
+            gl.BufferData(
+                gl::ARRAY_BUFFER,
+                (crate::shaders::triangle::VERTEX_DATA.len() * std::mem::size_of::<f32>()) as gl::types::GLsizeiptr,
+                crate::shaders::triangle::VERTEX_DATA.as_ptr() as *const _,
+                gl::STATIC_DRAW,
+            );
+            gl.DrawArrays(gl::TRIANGLES, 0, 3);
+        }
+        Ok(())
+    }
+}
+
 #[rustfmt::skip]
 pub static VERTEX_DATA: [f32; 15] = [
     // (position 2d + color 3d pack)

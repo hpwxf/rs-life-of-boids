@@ -1,34 +1,21 @@
-use super::support::gl;
-use glutin::window::Window;
-use glutin::{PossiblyCurrent, ContextWrapper};
 use std::ffi::CStr;
+use std::rc::Rc;
 
+use cgmath::Matrix3;
+use glutin::{ContextWrapper, PossiblyCurrent};
+use glutin::window::Window;
 
+use super::support::gl;
+
+#[derive(Debug, Copy, Clone)]
 pub struct WindowSizeInfo {
-    pub width: f32,
-    pub height: f32,
+    pub width: u32,
+    pub height: u32,
     // hidpi_factor: f64,
 }
 
 #[derive(Debug)]
 pub enum CustomError {
-    // WindowInfo(String)
-}
-
-pub fn get_window_size_info(window: &Window) -> Result<WindowSizeInfo, CustomError> {
-    // let hidpi_factor = window.get_hidpi_factor();
-    // let logical_size = window
-    //     .get_inner_size()
-    //     .ok_or_else(|| CustomError::WindowIngo("Tried to get size of closed window".to_string()))?;
-    // let physical_size = logical_size.to_physical(hidpi_factor);
-
-    let physical_size = window.inner_size();
-
-    Ok(WindowSizeInfo {
-        width: physical_size.width as f32,
-        height: physical_size.height as f32,
-        // hidpi_factor,
-    })
 }
 
 pub fn gl_init(windowed_context: &ContextWrapper<PossiblyCurrent, Window>) -> gl::Gl {
@@ -42,5 +29,32 @@ pub fn gl_init(windowed_context: &ContextWrapper<PossiblyCurrent, Window>) -> gl
 
     println!("OpenGL version {}", version);
     gl
+}
+
+pub fn get_window_size_info(window: &Window) -> Result<WindowSizeInfo, CustomError> {
+    // let hidpi_factor = window.get_hidpi_factor();
+    // let logical_size = window
+    //     .get_inner_size()
+    //     .ok_or_else(|| CustomError::WindowIngo("Tried to get size of closed window".to_string()))?;
+    // let physical_size = logical_size.to_physical(hidpi_factor);
+
+    let physical_size = window.inner_size();
+
+    Ok(WindowSizeInfo {
+        width: physical_size.width,
+        height: physical_size.height,
+        // hidpi_factor,
+    })
+}
+
+pub fn clear_screen(gl: &Rc<gl::Gl>, color: [f32; 4]) {
+    unsafe {
+        gl.ClearColor(color[0], color[1], color[2], color[3]);
+        gl.Clear(gl::COLOR_BUFFER_BIT);
+    }
+}
+
+pub fn vertex_transform_2d(width: f32, height: f32) -> Matrix3<f32> {
+    Matrix3::new(2. / width, 0., 0., 0., -2. / height, 0., -1., 1., 1.)
 }
 

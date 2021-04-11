@@ -15,12 +15,12 @@ pub enum ShaderError {
 }
 
 pub struct ShaderProgram {
-    pub(crate) program_id: gl::types::GLuint,
-    pub(crate) gl: Rc<gl::Gl>,
+    pub(super) program_id: gl::types::GLuint,
+    pub(super) gl: Rc<gl::Gl>,
 }
 
 impl ShaderProgram {
-    pub fn new(gl: &Rc<gl::Gl>, vertex_shader_src: &'static [u8], fragment_shader_src: &'static [u8]) -> Result<ShaderProgram, ShaderError> {
+    pub fn new(gl: &Rc<gl::Gl>, vertex_shader_src: &'static [u8], fragment_shader_src: &'static [u8]) -> Result<ShaderProgram> {
         unsafe {
             let vertex_shader = compile_shader(&gl, vertex_shader_src, gl::VERTEX_SHADER)?;
             let fragment_shader = compile_shader(&gl, fragment_shader_src, gl::FRAGMENT_SHADER)?;
@@ -37,24 +37,24 @@ impl ShaderProgram {
         }
     }
 
-    pub fn get_attrib_location(&self, name: &str) -> Result<gl::types::GLint, ShaderError> {
+    pub(super) fn get_attrib_location(&self, name: &str) -> Result<gl::types::GLint> {
         let c_name = CString::new(name).unwrap();
         unsafe {
             let location = self.gl.GetAttribLocation(self.program_id, c_name.as_ptr());
             if location == -1 {
-                Err(ShaderError::Lookup(format!("'couldn't find attribute named '{}'", name)))
+                Err(anyhow!(ShaderError::Lookup(format!("'couldn't find attribute named '{}'", name))))
             } else {
                 Ok(location)
             }
         }
     }
 
-    pub fn get_uniform_location(&self, name: &str) -> Result<gl::types::GLint, ShaderError> {
+    pub(super) fn get_uniform_location(&self, name: &str) -> Result<gl::types::GLint> {
         let c_name = CString::new(name).unwrap();
         unsafe {
             let location = self.gl.GetUniformLocation(self.program_id, c_name.as_ptr());
             if location == -1 {
-                Err(ShaderError::Lookup(format!("'couldn't find uniform named '{}'", name)))
+                Err(anyhow!(ShaderError::Lookup(format!("'couldn't find uniform named '{}'", name))))
             } else {
                 Ok(location)
             }
