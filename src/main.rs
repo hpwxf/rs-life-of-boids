@@ -10,13 +10,16 @@ use cgmath::{Vector2, Point2, Rad, Basis2, Rotation2, Rotation, Zero};
 use rand::distributions::{Range, IndependentSample};
 use glutin::dpi::PhysicalSize;
 use std::path::PathBuf;
+use image::ImageFormat;
+use image::io::Reader as ImageReader;
+use crate::aux::calculate_relative_brightness;
 
 #[macro_use]
-mod support;
 mod glx;
 mod render;
 mod fps;
 mod shaders;
+mod aux;
 
 const TITLE: &str = "new rusty boids";
 const CACHE_FPS_MS: u64 = 500;
@@ -63,6 +66,13 @@ fn main() {
 
     let mut renderer = Renderer::new(gl, renderer_config);
     renderer.initialize();
+
+    println!("Current dir = {:?}", std::env::current_dir());
+
+    let img = ImageReader::open("./assets/Grid_Concept_Art.png").unwrap().decode().unwrap();
+    let img = img.to_bgr8();
+    let (img_width, img_height) = img.dimensions();
+
 
     let mut points = Vec::<Point>::with_capacity(10_000);
     let get_pos = |t: f32| {
@@ -125,6 +135,15 @@ fn main() {
             Event::RedrawRequested(_) | Event::NewEvents(StartCause::Poll) => {
                 if let Ok(elapsed) = start_time.elapsed() {
                     let PhysicalSize { width, height } = windowed_context.window().inner_size();
+
+                    let get_pixel_brightness = |x: f32, y: f32| {
+                        let pixel = img.get_pixel(
+                            u32::clamp((x / width as f32 * img_width as f32) as u32, 0, img_width-1),
+                            u32::clamp((y / height as f32 * img_height as f32) as u32, 0, img_height-1));
+                        let v = pixel.0;
+                        calculate_relative_brightness(v[2], v[1], v[0])
+                    };
+
                     let ratio = width as f32 / height as f32;
                     ///////////////////
                     let vel_space = Range::new(0., 10.0);
@@ -132,7 +151,7 @@ fn main() {
                     for p in &mut points {
                         let a = ang_space.ind_sample(&mut rng);
                         let m = vel_space.ind_sample(&mut rng);
-                        p.velocity = Basis2::from_angle(Rad(a)).rotate_vector(Vector2::new(0., m));
+                        p.velocity = Basis2::from_angle(Rad(a)).rotate_vector(Vector2::new(0., m)) * (1.0 - get_pixel_brightness(p.position.x, p.position.y));
                         p.position += p.velocity / 5.0;
                     }
                     ///////////////////
@@ -150,7 +169,7 @@ fn main() {
         accumulated_time += elapsed_time;
         count += 1;
         if accumulated_time > 1000.0 {
-            let title = format!("FPS: {:.2}", count as f64 / (accumulated_time * 0.001)); 
+            let title = format!("FPS: {:.2}", count as f64 / (accumulated_time * 0.001));
             windowed_context.window().set_title(title.as_str());
             count = 0;
             accumulated_time = 0.0;

@@ -39,7 +39,8 @@ pub static VS_SRC: &'static [u8] = b"
 
     float a = atan(velocity.y, velocity.x);
     void main() {
-        pointColor = vec4(rgb_from_hsb(vec3(a/two_pi, 1 - (mag_2 / maxSpeedSquared), 1.0)), 1.0);
+        // pointColor = vec4(rgb_from_hsb(vec3(a/two_pi, 1 - (mag_2 / maxSpeedSquared), 1.0)), 1.0);
+        pointColor = vec4(mag_2 / maxSpeedSquared, mag_2 / maxSpeedSquared, mag_2 / maxSpeedSquared, 1.0);
         gl_PointSize = pointSize;
         gl_Position = vec4(transform * vec3(position, 1.0), 1.0);
     }\0";

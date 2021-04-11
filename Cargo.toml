@@ -12,6 +12,8 @@ glutin = "0.26"
 cgmath = "0.18"
 rand = "0.3.16"
 image = "0.23.14"
+anyhow = "1.0"
+thiserror = "1.0"
 
 [build-dependencies]
 gl_generator = "0.14"
