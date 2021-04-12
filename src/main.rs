@@ -9,16 +9,16 @@ use crate::render::{Renderer, RendererConfig};
 use glutin::dpi::PhysicalSize;
 use std::path::PathBuf;
 
-use anyhow::{anyhow,Result};
 use crate::points_simulator::PointsSimulator;
+use anyhow::{anyhow, Result};
 
 #[macro_use]
 mod glx;
-mod utils;
 mod fps;
+mod points_simulator;
 mod render;
 mod shader_programs;
-mod points_simulator;
+mod utils;
 
 const TITLE: &str = "new rusty boids";
 // const CACHE_FPS_MS: u64 = 500;
@@ -34,7 +34,8 @@ fn main() -> Result<()> {
 
     let monitor = events_loop
         .available_monitors()
-        .nth(1).ok_or(anyhow!("Cannot use this monitor"))?;
+        .nth(1)
+        .ok_or(anyhow!("Cannot use this monitor"))?;
     let fullscreen = Some(Fullscreen::Borderless(Some(monitor)));
 
     let wb = WindowBuilder::new()
@@ -73,8 +74,8 @@ fn main() -> Result<()> {
 
     println!("Current dir = {:?}", std::env::current_dir());
 
-    let mut s = PointsSimulator::new(window_info);
-    
+    let mut s = PointsSimulator::new(window_info)?;
+
     events_loop.run(move |event, _, control_flow| {
         // println!("{:?}", event);
         // *control_flow = ControlFlow::Wait; // no auto refresh
@@ -118,7 +119,7 @@ fn main() -> Result<()> {
                             renderer.gl.clone(),
                             &PathBuf::from("export.png"),
                             &windowed_context.window(),
-                        );
+                        ).unwrap();
                     }
                     (VirtualKeyCode::M, ElementState::Pressed) => {
                         is_maximized = !is_maximized;
@@ -127,6 +128,10 @@ fn main() -> Result<()> {
                     (VirtualKeyCode::D, ElementState::Pressed) => {
                         decorations = !decorations;
                         windowed_context.window().set_decorations(decorations);
+                    }
+                    (VirtualKeyCode::R, ElementState::Pressed) => {
+                        println!("Reset points");
+                        s.init_points();
                     }
                     _ => (),
                 },
@@ -137,9 +142,9 @@ fn main() -> Result<()> {
                     let PhysicalSize { width, height } = windowed_context.window().inner_size();
                     let ratio = width as f32 / height as f32;
 
-                    s.update((width, height));
+                    s.update();
                     let points = &s.points;
-                    
+
                     renderer
                         .render(
                             elapsed.as_secs_f32(),
@@ -149,8 +154,7 @@ fn main() -> Result<()> {
                             (width, height),
                         )
                         .unwrap();
-                    
-                    
+
                     windowed_context.swap_buffers().unwrap();
                 }
             }

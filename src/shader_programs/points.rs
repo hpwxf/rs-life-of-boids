@@ -16,6 +16,15 @@ pub struct Point {
     pub(crate) velocity: Velocity,
 }
 
+impl Default for Point {
+    fn default() -> Self {
+        Point {
+            position: Position { x: 0.0, y: 0.0 },
+            velocity: Velocity { x: 0.0, y: 0.0 },
+        }
+    }
+}
+
 pub struct PointsRenderProgram {
     program: ProgramUnit,
     transform: Matrix3<f32>,
@@ -28,8 +37,8 @@ impl PointsRenderProgram {
         Ok(PointsRenderProgram {
             program: ProgramUnit::new(&gl, &VS_SRC, &FS_SRC)?,
             transform: vertex_transform_2d(size.width as f32, size.height as f32),
-            point_size: 5.0,
-            max_speed: 5.0,
+            point_size: 1.0,
+            max_speed: 10.0,
         })
     }
 
@@ -86,6 +95,7 @@ impl PointsRenderProgram {
                 self.program.get_uniform("maxSpeedSquared")?,
                 self.max_speed.powi(2) as gl::types::GLfloat,
             );
+            // an empty gl.BufferData was there before (RIP)
             gl.BufferData(
                 gl::ARRAY_BUFFER,
                 (points.len() * std::mem::size_of::<Point>()) as gl::types::GLsizeiptr,

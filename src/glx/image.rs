@@ -1,10 +1,11 @@
 use crate::glx::gl;
+use anyhow::Result;
 use glutin::dpi::PhysicalSize;
 use glutin::window::Window;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-pub fn save_image(gl: Rc<gl::Gl>, filepath: &PathBuf, window: &Window) {
+pub fn save_image(gl: Rc<gl::Gl>, filepath: &PathBuf, window: &Window) -> Result<()> {
     let PhysicalSize { width, height } = window.inner_size();
     let nr_channels = 3;
     let mut stride = nr_channels * width;
@@ -41,5 +42,5 @@ pub fn save_image(gl: Rc<gl::Gl>, filepath: &PathBuf, window: &Window) {
         }
     }
 
-    img.save(filepath).unwrap();
+    Ok(img.save(filepath)?)
 }
