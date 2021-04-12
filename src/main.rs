@@ -43,7 +43,8 @@ fn main() -> Result<()> {
         // .with_decorations(true)
         ;
     let windowed_context = ContextBuilder::new()
-        .build_windowed(wb, &&events_loop)
+        .with_vsync(true)
+        .build_windowed(wb, &events_loop)
         .unwrap();
     let windowed_context: ContextWrapper<PossiblyCurrent, Window> =
         unsafe { windowed_context.make_current().unwrap() };
