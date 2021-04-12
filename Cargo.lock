@@ -676,6 +676,7 @@ dependencies = [
  "gl_generator",
  "glutin",
  "image",
+ "memoffset",
  "rand 0.3.23",
  "thiserror",
 ]

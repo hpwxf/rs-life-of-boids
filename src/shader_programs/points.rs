@@ -9,6 +9,8 @@ use crate::glx::{vertex_transform_2d, ProgramUnit, WindowSizeInfo};
 pub type Position = Point2<f32>;
 pub type Velocity = Vector2<f32>;
 
+#[repr(C)]
+#[derive(Copy, Clone)]
 pub struct Point {
     pub(crate) position: Position,
     pub(crate) velocity: Velocity,
@@ -47,7 +49,7 @@ impl PointsRenderProgram {
                 gl::FLOAT,
                 gl::FALSE,
                 std::mem::size_of::<Point>() as gl::types::GLsizei,
-                std::ptr::null(), // or 0 as *const gl::types::GLvoid,
+                memoffset::offset_of!(Point, position) as *const gl::types::GLvoid,
             );
             let vel_loc = self.program.add_attribute("velocity")?;
             gl.VertexAttribPointer(
@@ -56,7 +58,7 @@ impl PointsRenderProgram {
                 gl::FLOAT,
                 gl::FALSE,
                 std::mem::size_of::<Point>() as gl::types::GLsizei,
-                std::mem::size_of::<Position>() as *const gl::types::GLvoid,
+                memoffset::offset_of!(Point, velocity) as *const gl::types::GLvoid,
             );
 
             // Allow shader to specify point size
