@@ -6,12 +6,12 @@ use cgmath::{Basis2, Rad, Rotation, Rotation2, Vector2};
 use image::io::Reader as ImageReader;
 use image::RgbImage;
 use rand::distributions::{IndependentSample, Range};
-use rand::{Rng, ThreadRng};
+use rand::Rng;
+use rayon::prelude::*;
 
 pub struct PointsSimulator {
     pub points: Vec<Point>,
     img: RgbImage,
-    rng: ThreadRng,
     space_size: SimulationSpace,
 }
 
@@ -29,26 +29,24 @@ impl PointsSimulator {
             .decode()
             .context("Failed to decode background image")?;
         let img = img.to_rgb8();
-        let mut rng = rand::thread_rng();
         let space_size = SimulationSpace {
             width: window_info.width as f32,
             height: window_info.height as f32,
         };
 
-        let mut points = Vec::<Point>::with_capacity(20_000);
+        let mut points = Vec::<Point>::with_capacity(200_000);
         points.resize(points.capacity(), Point::default());
-        Self::internal_init_points(&mut rng, space_size, &mut points);
+        Self::internal_init_points(space_size, &mut points);
 
         Ok(PointsSimulator {
             points,
             img,
-            rng,
             space_size,
         })
     }
 
     pub fn init_points(&mut self) {
-        Self::internal_init_points(&mut self.rng, self.space_size, &mut self.points);
+        Self::internal_init_points(self.space_size, &mut self.points);
     }
 
     pub fn update(&mut self) {
@@ -58,22 +56,20 @@ impl PointsSimulator {
         let vel_space = Range::new(0., 10.0);
         // let ang_space = Range::new(0., 6.28);
         let ang_space = Range::new(-1.0, 1.0);
-        for p in &mut self.points {
-            let a = ang_space.ind_sample(&mut self.rng);
-            let m = vel_space.ind_sample(&mut self.rng);
+        self.points.par_iter_mut().for_each(|p| {
+            let mut rng = rand::thread_rng();
+            let a = ang_space.ind_sample(&mut rng);
+            let m = vel_space.ind_sample(&mut rng);
             p.velocity = Basis2::from_angle(Rad(a)).rotate_vector(Vector2::new(0., m))
                 * (1.2 - get_pixel_brightness(p.position.x, p.position.y));
             p.position = periodize_point(p.position + p.velocity / 5.0);
-        }
+        });
     }
 
-    fn internal_init_points(
-        rng: &mut ThreadRng,
-        space_size: SimulationSpace,
-        points: &mut Vec<Point>,
-    ) {
+    fn internal_init_points(space_size: SimulationSpace, points: &mut Vec<Point>) {
         // Random position initialization
-        points.iter_mut().for_each(|p| {
+        points.par_iter_mut().for_each(|p| {
+            let mut rng = rand::thread_rng();
             *p = Point {
                 position: Position {
                     x: rng.gen::<f32>() * space_size.width,
